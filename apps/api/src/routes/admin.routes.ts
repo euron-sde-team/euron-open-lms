@@ -46,6 +46,10 @@ router.post("/learners/:id/unban", authenticate, learners.unban);
  * 204. 409 SUBSCRIPTION_ACTIVE, ALREADY_ERASED; 403 SELF_ACTION, TARGET_PROTECTED.
  */
 router.post("/learners/:id/erase", authenticate, rateLimit("admin-erase", 20, 3600), learners.erase);
+/** The learner's offline downloads (`Page<AdminDownloadRow>`), newest first: item, course, device, window, revoked. Area learners. */
+router.get("/learners/:id/downloads", authenticate, learners.downloads);
+/** Revoke one offline download `{}`: the app deletes the copy at its next check. Audited `download.revoke`. `AdminDownloadRow`. 409 DOWNLOAD_REVOKED. Area learners. */
+router.post("/downloads/:id/revoke", authenticate, learners.revokeDownload);
 /** Revoke an enrollment `{ reason }`: access ends, progress is kept, the learner is notified. `AdminEnrollment`. 409 ENROLLMENT_NOT_ACTIVE. Area learners. */
 router.post("/enrollments/:id/revoke", authenticate, learners.revoke);
 /** Move an enrollment's end date `{ validUntil }` (future, or null for life). `AdminEnrollment`. 409 ENROLLMENT_NOT_ACTIVE, ENROLLMENT_SUBSCRIPTION. Area learners. */

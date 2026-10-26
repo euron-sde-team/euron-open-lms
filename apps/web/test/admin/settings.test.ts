@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LmsSettings } from "@open-lms/types";
 import {
-  academySection, analyticsSection, bpsToPercent, changeCount, currencySection, isDirty, learningSection, mapFieldErrors, percentToBps, sellerSection, taxSection, toggleCurrency,
+  academySection, analyticsSection, bpsToPercent, changeCount, currencySection, isDirty, learningSection, mapFieldErrors, mobileSection, offlineSection, percentToBps, sellerSection, taxSection, toggleCurrency,
 } from "@/lib/admin-settings";
 
 const base: LmsSettings = {
@@ -14,14 +14,15 @@ const base: LmsSettings = {
   gateways: { routing: { USD: "STRIPE", INR: "RAZORPAY" }, fallback: "STRIPE" },
   tax: { enabled: true, mode: "EXCLUSIVE", rules: [{ country: "IN", rateBps: 1800, label: "GST" }] },
   seller: { legalName: "Northwind Ltd", address: "1 Main St", taxId: null, email: null },
-  learning: { videoCompletePercent: 90, reviewMinProgressPercent: 20, subscriptionGraceDays: 7, orderTtlMinutes: 60 },
+  learning: { videoCompletePercent: 90, reviewMinProgressPercent: 20, subscriptionGraceDays: 7, orderTtlMinutes: 60, offline: { enabled: true, days: 30, maxPerUser: 25 } },
   certificates: { signatoryName: "", signatoryTitle: "", footer: "" },
   analytics: { timezone: "UTC" },
+  mobile: { iosWebPurchaseLink: false, minSupportedVersion: null },
 };
 
 describe("dirty tracking", () => {
   it("is clean right after loading", () => {
-    for (const def of [academySection, currencySection, taxSection, sellerSection, learningSection, analyticsSection]) {
+    for (const def of [academySection, currencySection, taxSection, sellerSection, learningSection, offlineSection, mobileSection, analyticsSection]) {
       expect(isDirty(def as never, base, (def as typeof academySection).toForm(base) as never)).toBe(false);
     }
   });
@@ -108,5 +109,17 @@ describe("patches", () => {
   it("maps API field paths to the section's keys", () => {
     expect(mapFieldErrors({ "tax.rules.0.label": "is required" }, ["tax"])).toEqual({ "rules.0.label": "Is required" });
     expect(mapFieldErrors({ academyName: "too long" }, [])).toEqual({ academyName: "Too long" });
+  });
+
+  it("offline downloads and the mobile app patch their own groups, validated", () => {
+    const off = offlineSection.toForm(base);
+    expect(offlineSection.toPatch({ ...off, enabled: false, days: "14" })).toEqual({ learning: { offline: { enabled: false, days: 14, maxPerUser: 25 } } });
+    expect(offlineSection.validate({ ...off, days: "0" }).days).toBeTruthy();
+    expect(offlineSection.validate({ ...off, maxPerUser: "501" }).maxPerUser).toBeTruthy();
+    const mob = mobileSection.toForm(base);
+    expect(mobileSection.toPatch({ ...mob, minSupportedVersion: " " })).toEqual({ mobile: { iosWebPurchaseLink: false, minSupportedVersion: null } });
+    expect(mobileSection.toPatch({ iosWebPurchaseLink: true, minSupportedVersion: "1.4.0" })).toEqual({ mobile: { iosWebPurchaseLink: true, minSupportedVersion: "1.4.0" } });
+    expect(mobileSection.validate({ ...mob, minSupportedVersion: "v1" }).minSupportedVersion).toBeTruthy();
+    expect(mapFieldErrors({ "learning.offline.days": "too big" }, ["learning.offline", "learning"])).toEqual({ days: "Too big" });
   });
 });

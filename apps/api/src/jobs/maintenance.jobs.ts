@@ -7,6 +7,7 @@
  *   maintenance.reconcile-counters   recount the denormalised counters, fixing drift
  *   maintenance.purge-accounts       erase accounts whose deletion grace period is over
  *   notify.email                     email notifications that were not emailed yet
+ *   notify.push                      push one notification to the recipient's devices
  *
  * Every step is safe to run twice or on two workers at once: state changes are
  * conditional UPDATEs, the counter fix only touches rows whose value IS DISTINCT FROM
@@ -27,6 +28,7 @@ import { LIVE_SUBSCRIPTION } from "../repositories/admin-learners.repository";
 import { anonymiseUser, DELETION_GRACE_DAYS } from "../services/account.service";
 import { audit } from "../services/audit.service";
 import { expireUploads, processUpload } from "../services/media.service";
+import { pushNotification } from "../services/push.service";
 import { EMAIL_CATEGORY, OWN_EMAIL, hrefFor } from "../services/notification.service";
 import { academyName } from "../services/settings.service";
 import { registerJob } from "./registry";
@@ -193,5 +195,8 @@ export function registerMaintenanceJobs(): void {
   });
   registerJob("notify.email", async (data) => {
     await emailNotifications(data?.notificationId);
+  });
+  registerJob("notify.push", async ({ notificationId }) => {
+    await pushNotification(notificationId);
   });
 }

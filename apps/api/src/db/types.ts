@@ -257,6 +257,7 @@ export interface CourseItems {
 
 export interface Courses {
   access_mode: Generated<AccessMode>;
+  allow_downloads: Generated<boolean>;
   certificate_enabled: Generated<boolean>;
   cover_upload_id: string | null;
   created_at: Generated<Timestamp>;
@@ -427,10 +428,22 @@ export interface Notifications {
   entity_id: string;
   entity_type: string;
   id: string;
+  pushed_at: Timestamp | null;
   read_at: Timestamp | null;
   recipient_id: string;
   snippet: string | null;
   type: NotificationType;
+}
+
+export interface OfflineDownloads {
+  course_id: string;
+  created_at: Generated<Timestamp>;
+  device_id: string;
+  expires_at: Timestamp;
+  id: string;
+  item_id: string;
+  revoked_at: Timestamp | null;
+  user_id: string;
 }
 
 export interface OrderItems {
@@ -513,6 +526,17 @@ export interface Prices {
   sellable_id: string;
   sellable_type: SellableType;
   updated_at: Generated<Timestamp>;
+}
+
+export interface PushDevices {
+  app_version: string | null;
+  created_at: Generated<Timestamp>;
+  id: string;
+  last_seen_at: Generated<Timestamp>;
+  locale: string | null;
+  platform: string;
+  token: string;
+  user_id: string;
 }
 
 export interface QaReplies {
@@ -715,6 +739,7 @@ export interface Users {
   last_seen_at: Timestamp | null;
   password_hash: string;
   preferred_currency: string | null;
+  push_preferences: Generated<Json>;
   role: Generated<UserRole>;
   status: Generated<UserStatus>;
   suspended_until: Timestamp | null;
@@ -755,11 +780,13 @@ export interface DB {
   media_uploads: MediaUploads;
   notes: Notes;
   notifications: Notifications;
+  offline_downloads: OfflineDownloads;
   order_items: OrderItems;
   orders: Orders;
   payment_events: PaymentEvents;
   plans: Plans;
   prices: Prices;
+  push_devices: PushDevices;
   qa_replies: QaReplies;
   qa_threads: QaThreads;
   questions: Questions;

@@ -28,6 +28,7 @@ const course = (): AdminCourse => ({
   accessMode: "FREE",
   includedInSubscription: false,
   certificateEnabled: true,
+  allowDownloads: true,
   featured: false,
   categoryIds: [],
   prices: [],

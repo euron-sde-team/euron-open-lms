@@ -1,5 +1,5 @@
 /** Auth, the academy meta, your account, uploads and notifications. */
-import type { AcademyMeta, AuthResult, EmailCategory, Me, Media, Notification, NotificationCounts, Page } from "@open-lms/types";
+import type { AcademyMeta, AuthResult, EmailCategory, Me, Media, Notification, NotificationCounts, Page, PushDevice, PushPlatform } from "@open-lms/types";
 import { uploadMedia, type UploadOptions } from "../upload";
 import { enc, type Helpers, type PageQuery } from "./helpers";
 
@@ -39,6 +39,15 @@ export interface AccountPatch {
   avatarUploadId?: string | null;
   preferredCurrency?: string | null;
   emailPreferences?: Partial<Record<EmailCategory, boolean>>;
+  pushPreferences?: Partial<Record<EmailCategory, boolean>>;
+}
+
+export interface PushDeviceInput {
+  platform: PushPlatform;
+  /** The FCM registration token. */
+  token: string;
+  appVersion?: string;
+  locale?: string;
 }
 
 export function coreEndpoints(h: Helpers) {
@@ -79,6 +88,12 @@ export function coreEndpoints(h: Helpers) {
     revokeSession: (id: string) => del(`/users/me/sessions/${enc(id)}`),
   };
 
+  /** The mobile app's push registration (PUT upserts by token). */
+  const devices = {
+    register: (body: PushDeviceInput) => h.put<PushDevice>("/my/devices", body),
+    remove: (token: string) => del(`/my/devices/${enc(token)}`),
+  };
+
   const media = {
     upload: (opts: UploadOptions) => uploadMedia(http, opts),
     get: (id: string) => get<Media>(`/media/${enc(id)}`),
@@ -92,5 +107,5 @@ export function coreEndpoints(h: Helpers) {
     readAll: () => post("/notifications/read-all"),
   };
 
-  return { auth, meta, users, media, notifications };
+  return { auth, meta, users, media, notifications, devices };
 }

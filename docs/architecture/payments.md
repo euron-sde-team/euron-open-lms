@@ -128,6 +128,36 @@ The handoff (`CheckoutHandoff` in [`packages/types/src/commerce.ts`](../../packa
 | `RAZORPAY_MODAL` | Loads Checkout.js from `RAZORPAY_CHECKOUT_SCRIPT_URL` and opens the modal with the order or subscription id. On success the handler posts `{ razorpay_payment_id, razorpay_order_id or razorpay_subscription_id, razorpay_signature }` to `POST /api/checkout/razorpay/confirm` |
 | `FULFILLED` | Nothing to pay (zero total, or a retried start of a paid order) |
 
+The mobile app uses the same handoff. For Stripe it starts checkout with
+`returnUrl: "<web origin>/checkout/app-return?app=openlms"` and opens the hosted page in a
+Custom Tab (Android) or an authentication session (iOS). Stripe documents an https
+`success_url` for mobile apps (a universal or app link, with a page that links into the
+app's scheme as the fallback), so the return is a real page on the web origin:
+
+1. `checkoutReturnUrl` (`domain/safe-url.ts`) accepts it because it is on the web origin;
+   checkout appends `orderId` and `session_id` (or `canceled=1`), so Stripe returns to
+   `/checkout/app-return?app=openlms&orderId=<id>&session_id=...`.
+2. The page ([`apps/web/src/app/(main)/checkout/app-return/page.tsx`](../../apps/web/src/app/(main)/checkout/app-return/page.tsx))
+   checks `app` against `MOBILE_RETURN_SCHEMES` (served as `mobile.appReturnSchemes` in
+   `GET /api/meta`, default `openlms`) and, when allowed, immediately opens
+   `openlms://checkout/return?orderId=<id>` (`&canceled=1` after a cancel). It also shows a
+   fallback: the academy name, "Payment received" or "Payment canceled", "Return to the
+   app" with the same link, and "Continue on the website" to the order page. A scheme that
+   is not allowed gets no redirect and no app button (`apps/web/src/lib/app-return.ts`).
+3. The app polls `GET /api/checkout/orders/:id?sync=1` until the order is paid.
+
+Any other `returnUrl` is `400 RETURN_URL_NOT_ALLOWED`, so checkout is never an open
+redirect. A custom-scheme `returnUrl` (`openlms://...`, any scheme in
+`MOBILE_RETURN_SCHEMES`) is also accepted and is what the local stub flow uses, but it is
+not the documented path for real Stripe: production apps should use the https page above. For Razorpay the
+handoff carries `mode`: `native` (the app opens the Razorpay SDK with the same options) or
+`stub`, when `RAZORPAY_CHECKOUT_SCRIPT_URL` points at the local stubs; then
+`checkoutPageUrl` is a full-page copy of the stub modal whose Pay redirects to
+`openlms://checkout/razorpay` (or the page's `redirect` parameter) with the signed fields,
+which the app posts to the same confirm endpoint. Some storefronts do not allow buying
+digital content outside their own billing: `settings.mobile.iosWebPurchaseLink` (in
+`GET /api/meta`) tells the iOS app whether it may link to web checkout at all.
+
 `razorpayConfirm` checks that the order is the learner's and paid through Razorpay, that
 the claimed id equals the order's `gateway_ref`, and verifies the signature in constant
 time; then it fetches the payment from Razorpay, checks it belongs to that order, and only

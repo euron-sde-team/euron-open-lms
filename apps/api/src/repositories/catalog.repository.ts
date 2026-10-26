@@ -12,12 +12,15 @@
  *   newest      published_at in epoch milliseconds (exact in float8)
  *   rating      rating_sum / rating_count, unrated courses last
  *   price_*     the price in the requested currency; courses without one sort last
- * Facets are four grouped queries over the same filters, each ignoring its own
- * dimension (picking "Beginner" must not make the other levels disappear).
+ * Facets are six grouped queries over the same filters, each ignoring its own
+ * dimension (picking "Beginner" must not make the other levels disappear). Rating and
+ * length use the stored totals (`rating_sum`, `rating_count`, `duration_seconds`) through
+ * the rules in domain/catalog-filters.ts.
  */
-import type { CatalogSort, CourseLevel } from "@open-lms/types";
+import { CATALOG_MIN_RATINGS, COURSE_LENGTHS, type CatalogMinRating, type CatalogSort, type CourseLength, type CourseLevel } from "@open-lms/types";
 import { sql, type Expression, type RawBuilder, type SqlBool } from "kysely";
 import { db, type Executor } from "../db/kysely";
+import { lengthRange } from "../domain/catalog-filters";
 import { CARD_COLUMNS, type CardRow } from "./course-card.repository";
 import { atKey, olderThan, type ScoreKey, type TimeKey } from "./keyset";
 import { titleLike, tsMatches, tsRank } from "./text-search";
@@ -30,15 +33,28 @@ export interface CatalogFilters {
   level?: CourseLevel;
   language?: string;
   price?: PriceFilter;
+  minRating?: CatalogMinRating;
+  length?: CourseLength;
 }
 
-type Dimension = "category" | "level" | "language" | "price";
+type Dimension = "category" | "level" | "language" | "price" | "rating" | "length";
 
 /** Price sorts push courses without a price past every real amount. */
 const NO_PRICE_ASC = 9007199254740991;
 
 function allOf(conds: Expression<SqlBool>[]): Expression<SqlBool> {
   return conds.length ? sql<SqlBool>`(${sql.join(conds, sql` AND `)})` : sql<SqlBool>`true`;
+}
+
+/** Rated, with an exact average of at least `min` (domain/catalog-filters.ts meetsMinRating). */
+function ratingAtLeast(min: CatalogMinRating): Expression<SqlBool> {
+  return sql<SqlBool>`(c.rating_count > 0 AND c.rating_sum >= ${min}::numeric * c.rating_count)`;
+}
+
+/** The total duration falls in a length bucket (domain/catalog-filters.ts lengthRange). */
+function lengthIs(length: CourseLength): Expression<SqlBool> {
+  const { min, max } = lengthRange(length);
+  return max === null ? sql<SqlBool>`c.duration_seconds >= ${min}` : sql<SqlBool>`c.duration_seconds BETWEEN ${min} AND ${max}`;
 }
 
 /** The WHERE of a catalog query over `courses as c`, optionally without one dimension (facets). */
@@ -56,6 +72,8 @@ function conditions(f: CatalogFilters, except?: Dimension): Expression<SqlBool> 
     else if (f.price === "paid") conds.push(sql<SqlBool>`c.access_mode = 'PAID'`);
     else conds.push(sql<SqlBool>`c.included_in_subscription`);
   }
+  if (f.minRating !== undefined && except !== "rating") conds.push(ratingAtLeast(f.minRating));
+  if (f.length && except !== "length") conds.push(lengthIs(f.length));
   return allOf(conds);
 }
 
@@ -92,6 +110,7 @@ export interface CourseDetailRow extends CardRow {
   outcomes: string[];
   prerequisites: string[];
   certificate_enabled: boolean;
+  allow_downloads: boolean;
   updated_at: Date;
 }
 
@@ -119,7 +138,7 @@ export class CatalogRepository {
   }
 
   async facets(f: CatalogFilters, exec: Executor = db) {
-    const [categories, levels, languages, price] = await Promise.all([
+    const [categories, levels, languages, price, rating, length] = await Promise.all([
       exec
         .selectFrom("courses as c")
         .innerJoin("course_categories as cc", "cc.course_id", "c.id")
@@ -148,8 +167,18 @@ export class CatalogRepository {
         ])
         .where(conditions(f, "price"))
         .executeTakeFirstOrThrow(),
+      exec
+        .selectFrom("courses as c")
+        .select(CATALOG_MIN_RATINGS.map((min) => sql<number>`count(*) FILTER (WHERE ${ratingAtLeast(min)})::int`.as(`${min}`)))
+        .where(conditions(f, "rating"))
+        .executeTakeFirstOrThrow() as Promise<Record<`${CatalogMinRating}`, number>>,
+      exec
+        .selectFrom("courses as c")
+        .select(COURSE_LENGTHS.map((l) => sql<number>`count(*) FILTER (WHERE ${lengthIs(l)})::int`.as(l)))
+        .where(conditions(f, "length"))
+        .executeTakeFirstOrThrow() as Promise<Record<CourseLength, number>>,
     ]);
-    return { categories, levels, languages, price };
+    return { categories, levels, languages, price, rating, length };
   }
 
   /** A short published shelf: featured, popular, newest or free. */
@@ -180,7 +209,7 @@ export class CatalogRepository {
   courseBySlug(slug: string, exec: Executor = db): Promise<CourseDetailRow | undefined> {
     return exec
       .selectFrom("courses as c")
-      .select([...CARD_COLUMNS, "c.status", "c.description", "c.outcomes", "c.prerequisites", "c.certificate_enabled", "c.updated_at"])
+      .select([...CARD_COLUMNS, "c.status", "c.description", "c.outcomes", "c.prerequisites", "c.certificate_enabled", "c.allow_downloads", "c.updated_at"])
       .where("c.slug", "=", slug)
       .executeTakeFirst() as Promise<CourseDetailRow | undefined>;
   }

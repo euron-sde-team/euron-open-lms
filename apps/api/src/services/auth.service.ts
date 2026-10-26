@@ -25,6 +25,7 @@ import * as templates from "../integrations/mail/templates";
 import { failureBudget } from "../middleware/rate-limit";
 import { toMe } from "../presenters/user.presenter";
 import { authTokenRepo } from "../repositories/auth-token.repository";
+import { pushDeviceRepo } from "../repositories/push-device.repository";
 import { recoveryCodeRepo } from "../repositories/recovery-code.repository";
 import { sessionRepo } from "../repositories/session.repository";
 import { userRepo, type UserRow } from "../repositories/user.repository";
@@ -247,10 +248,13 @@ export async function refresh(refreshToken: string, meta: RequestMeta): Promise<
   return next;
 }
 
-export async function logout(refreshToken: string | undefined): Promise<void> {
-  if (!refreshToken) return;
+/** Revoke the token's family. Returns whose session it was (null for an unknown token). */
+export async function logout(refreshToken: string | undefined): Promise<string | null> {
+  if (!refreshToken) return null;
   const session = await sessionRepo.findByHash(sha256(refreshToken));
-  if (session) await sessionRepo.revokeFamily(session.family_id);
+  if (!session) return null;
+  await sessionRepo.revokeFamily(session.family_id);
+  return session.user_id;
 }
 
 /**
@@ -262,6 +266,8 @@ async function endAllSessions(userId: string, action: string, meta: RequestMeta,
     if (Object.keys(patch).length) await userRepo.update(userId, patch, trx);
     await sessionRepo.revokeAllForUser(userId, trx);
     await userRepo.bumpTokenVersion(userId, trx);
+    // Signed out on every device: none of them should keep receiving pushes.
+    await pushDeviceRepo.deleteAllForUser(userId, trx);
     await audit({ actorId: userId, action, entityType: "user", entityId: userId, ip: meta.ip }, trx);
   });
 }

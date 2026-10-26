@@ -1,10 +1,10 @@
 /**
- * The catalog's filters live in the URL (`/courses?category=data&level=beginner&price=free&sort=newest&q=sql`),
+ * The catalog's filters live in the URL (`/courses?category=data&level=beginner&price=free&rating=4&length=short&sort=newest&q=sql`),
  * so a filtered view survives a reload and can be shared. These helpers are pure: parse
  * whatever arrives (ignoring junk), serialise in a stable order, and turn the state into
  * the API query.
  */
-import { COURSE_LEVELS, type CatalogFacets, type CatalogSort, type CourseLevel } from "@open-lms/types";
+import { CATALOG_MIN_RATINGS, COURSE_LENGTHS, COURSE_LEVELS, type CatalogFacets, type CatalogMinRating, type CatalogSort, type CourseLength, type CourseLevel } from "@open-lms/types";
 import type { CatalogQuery } from "@open-lms/api-client";
 
 export type PriceFilter = "free" | "paid" | "subscription";
@@ -15,6 +15,9 @@ export interface CatalogUrlState {
   level?: CourseLevel;
   language?: string;
   price?: PriceFilter;
+  /** `rating=4` in the URL, `minRating` for the API. */
+  minRating?: CatalogMinRating;
+  length?: CourseLength;
   sort?: CatalogSort;
 }
 
@@ -29,6 +32,7 @@ export const CATALOG_SORTS: { value: CatalogSort; label: string }[] = [
 
 const SORT_VALUES = new Set<string>(CATALOG_SORTS.map((s) => s.value));
 const PRICES = new Set<string>(["free", "paid", "subscription"]);
+const LENGTHS = new Set<string>(COURSE_LENGTHS);
 const SLUG = /^[a-z0-9-]{1,80}$/;
 const LANG = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/i;
 
@@ -54,6 +58,13 @@ export function levelFromParam(v: string | undefined): CourseLevel | undefined {
   return (COURSE_LEVELS as readonly string[]).includes(up) ? (up as CourseLevel) : undefined;
 }
 
+/** "4" or "4.5" in the URL ("4.0" too); anything else is dropped. */
+export function minRatingFromParam(v: string | undefined): CatalogMinRating | undefined {
+  if (!v) return undefined;
+  const n = Number(v);
+  return (CATALOG_MIN_RATINGS as readonly number[]).includes(n) ? (n as CatalogMinRating) : undefined;
+}
+
 /** The sort the API uses when none is given: best match while searching, else most popular. */
 export function defaultSort(q: string | undefined): CatalogSort {
   return q?.trim() ? "relevance" : "popular";
@@ -72,6 +83,10 @@ export function parseCatalogParams(src: ParamSource): CatalogUrlState {
   if (language && LANG.test(language)) out.language = language.toLowerCase();
   const price = read(src, "price")?.toLowerCase();
   if (price && PRICES.has(price)) out.price = price as PriceFilter;
+  const minRating = minRatingFromParam(read(src, "rating"));
+  if (minRating) out.minRating = minRating;
+  const length = read(src, "length")?.toLowerCase();
+  if (length && LENGTHS.has(length)) out.length = length as CourseLength;
   const sort = read(src, "sort")?.toLowerCase();
   // "Best match" only means something while searching.
   if (sort && SORT_VALUES.has(sort) && !(sort === "relevance" && !out.q)) out.sort = sort as CatalogSort;
@@ -87,6 +102,8 @@ export function serializeCatalogParams(state: CatalogUrlState): string {
   if (state.level) p.set("level", levelToParam(state.level));
   if (state.language) p.set("language", state.language);
   if (state.price) p.set("price", state.price);
+  if (state.minRating) p.set("rating", String(state.minRating));
+  if (state.length) p.set("length", state.length);
   if (state.sort && state.sort !== defaultSort(state.q) && !(state.sort === "relevance" && !state.q?.trim())) p.set("sort", state.sort);
   return p.toString();
 }
@@ -108,7 +125,7 @@ export function withFilter<K extends keyof CatalogUrlState>(state: CatalogUrlSta
 
 /** Filters other than the search text and sort (what "Clear filters" removes). */
 export function activeFilterCount(state: CatalogUrlState): number {
-  return [state.category, state.level, state.language, state.price].filter(Boolean).length;
+  return [state.category, state.level, state.language, state.price, state.minRating, state.length].filter(Boolean).length;
 }
 
 export function clearFilters(state: CatalogUrlState): CatalogUrlState {
@@ -123,6 +140,8 @@ export function toCatalogQuery(state: CatalogUrlState, currency?: string): Catal
   if (state.level) q.level = state.level;
   if (state.language) q.language = state.language;
   if (state.price) q.price = state.price;
+  if (state.minRating) q.minRating = state.minRating;
+  if (state.length) q.length = state.length;
   q.sort = state.sort ?? defaultSort(state.q);
   if (currency) q.currency = currency;
   return q;

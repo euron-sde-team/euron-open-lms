@@ -40,5 +40,11 @@ route53_zone_id = "<ROUTE53_HOSTED_ZONE_ID>" # automatic certificates + DNS; or 
 #   aws secretsmanager put-secret-value --secret-id <name_prefix>/evs --secret-string \
 #     '{"EVS_PLAYBACK_KEY":"<key>","EVS_READ_KEY":"<key>","EVS_WEBHOOK_SECRET":"<secret>"}'
 
+# Push notifications to the mobile app through Firebase Cloud Messaging. The service
+# account key goes into <name_prefix>/push, the same way.
+# push_provider = "fcm"
+#   aws secretsmanager put-secret-value --secret-id <name_prefix>/push --secret-string \
+#     "$(jq -n --rawfile k service-account.json '{FCM_SERVICE_ACCOUNT_JSON: $k}')"
+
 # Browser uploads from a local web app running against this environment (make up-aws).
 # media_cors_extra_origins = ["http://localhost:3530"]

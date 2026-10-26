@@ -16,6 +16,8 @@
  *     session revoked and token_version bumped;
  *   - learning traces: notes, bookmarks, saved courses, quiz answers and submission text
  *     and files are deleted; certificates are deleted (they carry the name);
+ *   - devices: push registrations and offline download licences are deleted (a pending
+ *     deletion already drops the push registrations, so a signed-out phone goes quiet);
  *   - reviews and Q&A stay, shown under "Deleted user" so threads keep their shape.
  * A live subscription blocks deletion (409 SUBSCRIPTION_ACTIVE: cancel it first, so the
  * gateway stops charging), and so does being the last active admin (409 LAST_ADMIN).
@@ -59,6 +61,7 @@ export async function requestDeletion(actor: Actor, input: { password: string; t
     await trx.updateTable("users").set({ deletion_requested_at: now, updated_at: now }).where("id", "=", user.id).execute();
     await sessionRepo.revokeAllForUser(user.id, trx);
     await userRepo.bumpTokenVersion(user.id, trx);
+    await trx.deleteFrom("push_devices").where("user_id", "=", user.id).execute();
     await audit({ actorId: user.id, action: "user.deletion_requested", entityType: "user", entityId: user.id, ip: meta.ip }, trx);
   });
   return { purgeAfter: new Date(now.getTime() + DELETION_GRACE_DAYS * 86_400_000).toISOString() };
@@ -94,6 +97,7 @@ export async function anonymiseUser(id: string, trx: Executor): Promise<void> {
       totp_secret: null,
       totp_last_step: null,
       email_preferences: JSON.stringify({}),
+      push_preferences: JSON.stringify({}),
       suspended_until: null,
       deletion_requested_at: null,
       updated_at: now,
@@ -117,6 +121,8 @@ export async function anonymiseUser(id: string, trx: Executor): Promise<void> {
   await trx.updateTable("media_uploads").set({ status: "DELETED" }).where("owner_id", "=", id).where("purpose", "in", ["AVATAR", "SUBMISSION"]).execute();
   await trx.updateTable("orders").set({ billing: JSON.stringify({}) }).where("user_id", "=", id).execute();
   await trx.deleteFrom("notifications").where("recipient_id", "=", id).execute();
+  await trx.deleteFrom("push_devices").where("user_id", "=", id).execute();
+  await trx.deleteFrom("offline_downloads").where("user_id", "=", id).execute();
 }
 
 // ─── Export ─────────────────────────────────────────────────────────────────

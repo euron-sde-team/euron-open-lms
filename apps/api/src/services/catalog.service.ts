@@ -59,6 +59,8 @@ export async function facets(q: CatalogFilters): Promise<CatalogFacets> {
     levels,
     languages: f.languages.map((l) => ({ code: l.language, count: l.count })),
     price: f.price,
+    rating: f.rating,
+    length: f.length,
   };
 }
 
@@ -113,6 +115,7 @@ export async function courseDetail(viewer: Actor | null, slug: string, requested
     outcomes: row.outcomes ?? [],
     prerequisites: row.prerequisites ?? [],
     certificateEnabled: row.certificate_enabled,
+    allowDownloads: row.allow_downloads,
     instructors,
     sections: presentCurriculum(curriculum),
     counts: curriculumCounts(curriculum.items),

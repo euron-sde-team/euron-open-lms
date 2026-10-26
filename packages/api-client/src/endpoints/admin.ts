@@ -1,6 +1,6 @@
 /** Admin operations endpoints (admin.routes.ts). See docs/api/rest-contract.md "Admin: operations". */
 import type {
-  AdminCertificateRow, AdminEnrollment, AdminLearnerDetail, AdminSession, AdminStats, AdminUserRow, AuditEntry,
+  AdminCertificateRow, AdminDownloadRow, AdminEnrollment, AdminLearnerDetail, AdminSession, AdminStats, AdminUserRow, AuditEntry,
   IntegrationStatus, LmsSettings, Page, StaffRow, UserRole, UserStatus,
 } from "@open-lms/types";
 import { enc, type Helpers, type PageQuery } from "./helpers";
@@ -38,7 +38,9 @@ export interface AdminAuditQuery extends PageQuery {
 
 /** Any subset of the settings groups; inside a group, any subset of its fields. */
 export type AdminSettingsPatch = {
-  [K in keyof LmsSettings]?: LmsSettings[K] extends Record<string, unknown> ? Partial<LmsSettings[K]> : LmsSettings[K];
+  [K in Exclude<keyof LmsSettings, "learning">]?: LmsSettings[K] extends Record<string, unknown> ? Partial<LmsSettings[K]> : LmsSettings[K];
+} & {
+  learning?: Partial<Omit<LmsSettings["learning"], "offline">> & { offline?: Partial<LmsSettings["learning"]["offline"]> };
 };
 
 export function adminEndpoints(h: Helpers) {
@@ -57,6 +59,10 @@ export function adminEndpoints(h: Helpers) {
       grantEnrollment: (userId: string, body: AdminGrantInput) => post<AdminEnrollment>(`${learner(userId)}/enrollments`, body),
       revokeEnrollment: (enrollmentId: string, reason: string) => post<AdminEnrollment>(`/admin/enrollments/${enc(enrollmentId)}/revoke`, { reason }),
       setEnrollmentValidUntil: (enrollmentId: string, validUntil: string | null) => patch<AdminEnrollment>(`/admin/enrollments/${enc(enrollmentId)}`, { validUntil }),
+      /** The learner's offline downloads (mobile app), newest first. */
+      learnerDownloads: (userId: string, q?: PageQuery) => get<Page<AdminDownloadRow>>(`${learner(userId)}/downloads`, pq(q)),
+      /** The app deletes the copy at its next check. 409 DOWNLOAD_REVOKED. */
+      revokeDownload: (downloadId: string) => post<AdminDownloadRow>(`/admin/downloads/${enc(downloadId)}/revoke`, {}),
       suspend: (userId: string, body: { days: number; reason: string }) => post<AdminUserRow>(`${learner(userId)}/suspend`, body),
       unsuspend: (userId: string) => post<AdminUserRow>(`${learner(userId)}/unsuspend`),
       ban: (userId: string, reason: string) => post<AdminUserRow>(`${learner(userId)}/ban`, { reason }),

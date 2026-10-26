@@ -108,6 +108,11 @@ export class ClassroomRepository {
     await exec.deleteFrom("bookmarks").where("user_id", "=", userId).where("item_id", "=", itemId).execute();
   }
 
+  /** Course switches the classroom does not otherwise load. */
+  courseFlags(courseId: string, exec: Executor = db) {
+    return exec.selectFrom("courses").select(["allow_downloads"]).where("id", "=", courseId).executeTakeFirst();
+  }
+
   viewerEmail(userId: string, exec: Executor = db) {
     return exec.selectFrom("users").select("email").where("id", "=", userId).executeTakeFirst();
   }

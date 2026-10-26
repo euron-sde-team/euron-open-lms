@@ -1,9 +1,10 @@
 /**
  * DTOs of the learners console: AdminUserRow (batch-loaded per page), AdminEnrollment
  * (with `grantsAccess` decided by domain/entitlements.ts, the same rule every content
- * route uses) and the AdminOrderRow lines of a learner's recent orders.
+ * route uses), the AdminOrderRow lines of a learner's recent orders and their offline
+ * download licences (AdminDownloadRow).
  */
-import type { AdminEnrollment, AdminOrderRow, AdminUserRow, UserStatus, UserSummary } from "@open-lms/types";
+import type { AdminDownloadRow, AdminEnrollment, AdminOrderRow, AdminUserRow, UserStatus, UserSummary } from "@open-lms/types";
 import { db, type Executor } from "../db/kysely";
 import { decideAccess } from "../domain/entitlements";
 import { adminLearnersRepo } from "../repositories/admin-learners.repository";
@@ -112,4 +113,18 @@ export function presentOrderRows(rows: readonly OrderRow[], user: UserSummary & 
       paidAt: o.paid_at?.toISOString() ?? null,
     };
   });
+}
+
+/** One offline download licence on the learner's page. */
+export function presentDownload(r: { id: string; item_id: string; item_title: string; course_id: string; course_slug: string; course_title: string; device_id: string; created_at: Date; expires_at: Date; revoked_at: Date | null }, now = new Date()): AdminDownloadRow {
+  return {
+    id: r.id,
+    item: { id: r.item_id, title: r.item_title },
+    course: { id: r.course_id, slug: String(r.course_slug), title: r.course_title },
+    deviceId: r.device_id,
+    createdAt: r.created_at.toISOString(),
+    expiresAt: r.expires_at.toISOString(),
+    revokedAt: r.revoked_at?.toISOString() ?? null,
+    active: !r.revoked_at && r.expires_at > now,
+  };
 }

@@ -17,15 +17,16 @@ export const DEFAULT_SETTINGS: LmsSettings = {
   gateways: { routing: { INR: "RAZORPAY" }, fallback: "STRIPE" },
   tax: { enabled: false, mode: "EXCLUSIVE", rules: [] },
   seller: { legalName: config.PRODUCT_NAME, address: "", taxId: null, email: null },
-  learning: { videoCompletePercent: 90, reviewMinProgressPercent: 20, subscriptionGraceDays: 3, orderTtlMinutes: 60 },
+  learning: { videoCompletePercent: 90, reviewMinProgressPercent: 20, subscriptionGraceDays: 3, orderTtlMinutes: 60, offline: { enabled: true, days: 30, maxPerUser: 25 } },
   certificates: { signatoryName: "", signatoryTitle: "", footer: "" },
   analytics: { timezone: "UTC" },
+  mobile: { iosWebPurchaseLink: false, minSupportedVersion: null },
 };
 
 const TTL_MS = 5_000;
 let cache: { at: number; value: LmsSettings } | null = null;
 
-/** Every group is merged key by key, so a stored document from an older release keeps working. */
+/** Every group is merged key by key (learning.offline one level deeper), so a stored document from an older release keeps working. */
 export function mergeSettings(base: LmsSettings, stored: Partial<LmsSettings>): LmsSettings {
   return {
     ...base,
@@ -34,9 +35,10 @@ export function mergeSettings(base: LmsSettings, stored: Partial<LmsSettings>): 
     gateways: { ...base.gateways, ...(stored.gateways ?? {}), routing: { ...(stored.gateways?.routing ?? base.gateways.routing) } },
     tax: { ...base.tax, ...(stored.tax ?? {}) },
     seller: { ...base.seller, ...(stored.seller ?? {}) },
-    learning: { ...base.learning, ...(stored.learning ?? {}) },
+    learning: { ...base.learning, ...(stored.learning ?? {}), offline: { ...base.learning.offline, ...(stored.learning?.offline ?? {}) } },
     certificates: { ...base.certificates, ...(stored.certificates ?? {}) },
     analytics: { ...base.analytics, ...(stored.analytics ?? {}) },
+    mobile: { ...base.mobile, ...(stored.mobile ?? {}) },
   };
 }
 

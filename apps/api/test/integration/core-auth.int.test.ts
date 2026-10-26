@@ -7,6 +7,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from "vitest"
 import request from "supertest";
 import { clearSentMail, sentMail } from "../../src/integrations/mail/mailer";
 import { db } from "../../src/db/kysely";
+import { hashPassword } from "../../src/security/passwords";
 import { verifyTotp } from "../../src/security/totp";
 import { TOTP, Secret } from "otpauth";
 import { app, as, anon, createUser, PASSWORD } from "./harness";
@@ -73,7 +74,11 @@ describe("sign-up and email verification", () => {
 
   test("weak passwords and malformed input are 400s, not 500s", async () => {
     const username = uniqueName("weak-");
-    const weak = await anon().post("/api/auth/signup").send({ email: `${username}@example.test`, username, displayName: "W", password: "short" }).expect(400);
+    const short = await anon().post("/api/auth/signup").send({ email: `${username}@example.test`, username, displayName: "W", password: "short" }).expect(400);
+    expect(short.body).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: [{ path: "password", message: "must be at least 10 characters" }] } });
+    const long = await anon().post("/api/auth/signup").send({ email: `${username}@example.test`, username, displayName: "W", password: "x".repeat(129) }).expect(400);
+    expect(long.body.details.fields[0]).toMatchObject({ path: "password", message: "must be at most 128 characters" });
+    const weak = await anon().post("/api/auth/signup").send({ email: `${username}@example.test`, username, displayName: "W", password: "aaaaaaaaaaaa" }).expect(400);
     expect(weak.body.code).toBe("WEAK_PASSWORD");
     const bad = await anon().post("/api/auth/signup").send({ email: "not-an-email", username: "a", displayName: "", password: PASSWORD }).expect(400);
     expect(bad.body.code).toBe("VALIDATION_FAILED");
@@ -271,7 +276,9 @@ describe("sessions", () => {
     const s = await signIn();
     const wrong = await request(app).post("/api/auth/change-password").set("Authorization", `Bearer ${s.access}`).send({ currentPassword: "not-the-password", newPassword: "a-fresh-long-passphrase" }).expect(400);
     expect(wrong.body.code).toBe("INVALID_CREDENTIALS");
-    const weak = await request(app).post("/api/auth/change-password").set("Authorization", `Bearer ${s.access}`).send({ currentPassword: PASSWORD, newPassword: "short" }).expect(400);
+    const short = await request(app).post("/api/auth/change-password").set("Authorization", `Bearer ${s.access}`).send({ currentPassword: PASSWORD, newPassword: "short" }).expect(400);
+    expect(short.body).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: [{ path: "newPassword", message: "must be at least 10 characters" }] } });
+    const weak = await request(app).post("/api/auth/change-password").set("Authorization", `Bearer ${s.access}`).send({ currentPassword: PASSWORD, newPassword: "bbbbbbbbbbbb" }).expect(400);
     expect(weak.body.code).toBe("WEAK_PASSWORD");
     await request(app).post("/api/auth/change-password").set("Authorization", `Bearer ${s.access}`).send({ currentPassword: PASSWORD, newPassword: "a-fresh-long-passphrase" }).expect(204);
     await request(app).get("/api/auth/me").set("Authorization", `Bearer ${s.access}`).expect(401);
@@ -310,10 +317,19 @@ describe("password reset", () => {
     clearSentMail();
     await anon().post("/api/auth/forgot-password").send({ email: u.email }).expect(202);
     const token = linkToken();
+    // A new password shorter than 10 characters is a field error, and the link stays usable.
+    const short = await anon().post("/api/auth/reset-password").send({ token, password: "short" }).expect(400);
+    expect(short.body).toMatchObject({ code: "VALIDATION_FAILED", details: { fields: [{ path: "password" }] } });
     await anon().post("/api/auth/reset-password").send({ token, password: "a-brand-new-passphrase" }).expect(204);
     await anon().post("/api/auth/reset-password").send({ token, password: "another-new-passphrase" }).expect(400);
     await request(app).get("/api/auth/me").set("Authorization", `Bearer ${login.body.accessToken}`).expect(401);
     await anon().post("/api/auth/login").send({ login: u.email, password: "a-brand-new-passphrase" }).expect(200);
+  });
+
+  test("an older account with a short password still signs in (the length rule is for new passwords only)", async () => {
+    const u = await createUser();
+    await db.updateTable("users").set({ password_hash: await hashPassword("old-pw") }).where("id", "=", u.id).execute();
+    await anon().post("/api/auth/login").send({ login: u.email, password: "old-pw" }).expect(200);
   });
 
   test("forgot-password does not reveal whether an account exists", async () => {

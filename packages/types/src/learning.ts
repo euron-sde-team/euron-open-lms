@@ -21,6 +21,12 @@ export type SubmissionStatus = "SUBMITTED" | "CHANGES_REQUESTED" | "APPROVED" | 
 export type EnrollmentSource = "FREE" | "PURCHASE" | "BUNDLE" | "SUBSCRIPTION" | "GRANT";
 export type ReportTarget = "REVIEW" | "QA_THREAD" | "QA_REPLY";
 export type ReportReason = "SPAM" | "HARASSMENT" | "OFF_TOPIC" | "SPOILER" | "INAPPROPRIATE" | "OTHER";
+/** The catalog's minimum-rating filter: courses whose average rating is at least this. */
+export const CATALOG_MIN_RATINGS = [3, 3.5, 4, 4.5] as const;
+export type CatalogMinRating = (typeof CATALOG_MIN_RATINGS)[number];
+/** The catalog's length filter, by total duration: short under 2 hours, medium 2 to 6 hours, long over 6 hours. */
+export const COURSE_LENGTHS = ["short", "medium", "long"] as const;
+export type CourseLength = (typeof COURSE_LENGTHS)[number];
 
 // ─── Catalog ────────────────────────────────────────────────────────────────
 
@@ -110,6 +116,8 @@ export interface CourseDetail extends CourseCard {
   outcomes: string[];
   prerequisites: string[];
   certificateEnabled: boolean;
+  /** Videos may be saved for offline viewing in the mobile app (when offline downloads are on). */
+  allowDownloads: boolean;
   instructors: Instructor[];
   sections: CurriculumSectionPublic[];
   counts: { lectures: number; quizzes: number; assignments: number; articles: number; pdfs: number };
@@ -125,6 +133,9 @@ export interface CatalogFacets {
   levels: Record<CourseLevel, number>;
   languages: { code: string; count: number }[];
   price: { free: number; paid: number; subscription: number };
+  /** Courses rated at least each threshold. The buckets overlap: a 4.6 course counts under every one. */
+  rating: Record<`${CatalogMinRating}`, number>;
+  length: Record<CourseLength, number>;
 }
 
 export type CatalogSort = "relevance" | "popular" | "newest" | "rating" | "price_asc" | "price_desc";
@@ -172,7 +183,7 @@ export interface ClassroomSection {
 
 /** GET /api/learn/:courseSlug: the classroom shell (curriculum + progress). */
 export interface Classroom {
-  course: { id: string; slug: string; title: string; coverUrl: string | null; certificateEnabled: boolean };
+  course: { id: string; slug: string; title: string; coverUrl: string | null; certificateEnabled: boolean; allowDownloads: boolean };
   role: "LEARNER" | "STAFF" | "PREVIEW";
   enrollment: { id: string; progressPercent: number; completedItems: number; totalItems: number; completedAt: string | null; validUntil: string | null } | null;
   sections: ClassroomSection[];
@@ -222,6 +233,30 @@ export type Playback =
     }
   | { provider: "HLS" | "MP4"; url: string; posterUrl: string | null; watermark: string | null; resumeAt: number; expiresAt: null }
   | { provider: "YOUTUBE"; embedUrl: string; resumeAt: number; watermark: null; expiresAt: null };
+
+/**
+ * POST /api/learn/items/:itemId/downloads: a licence to keep one video on one device.
+ * `expiresAt` is when the download link stops working (fetch the video before it);
+ * `offlineExpiresAt` is when the saved copy must stop playing unless the app revalidates
+ * (POST /api/my/downloads/validate) before then.
+ */
+export type OfflineDownload = {
+  itemId: string;
+  courseId: string;
+  courseSlug: string;
+  title: string;
+  durationSeconds: number;
+  /** Stamp over the video while it plays, as online. */
+  watermark: string | null;
+  offlineExpiresAt: string;
+} & ({ provider: "EVS"; manifestUrl: string; expiresAt: string } | { provider: "HLS" | "MP4"; url: string; expiresAt: null });
+
+/** POST /api/my/downloads/validate: which saved videos may keep playing. */
+export interface OfflineValidation {
+  valid: { itemId: string; offlineExpiresAt: string }[];
+  /** Delete these copies: access ended, downloads were switched off, or the licence was revoked. */
+  revoked: string[];
+}
 
 /** POST /api/learn/items/:itemId/progress body (heartbeats every ~15 s and on pause/end). */
 export interface ProgressBeat {

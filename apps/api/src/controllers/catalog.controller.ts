@@ -1,5 +1,5 @@
 /** /api/catalog: the public catalog, course pages, bundles, instructors, free enrollment and the wishlist. Thin: parse, call the service, respond. */
-import { COURSE_LEVELS } from "@open-lms/types";
+import { CATALOG_MIN_RATINGS, COURSE_LENGTHS, COURSE_LEVELS, type CatalogMinRating } from "@open-lms/types";
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { pageQuery, parse } from "../core/validate";
@@ -16,6 +16,11 @@ const filters = z.object({
   level: z.enum(COURSE_LEVELS).optional(),
   language: z.string().regex(/^[a-z]{2,3}(-[A-Z]{2})?$/).optional(),
   price: z.enum(["free", "paid", "subscription"]).optional(),
+  minRating: z.coerce
+    .number()
+    .refine((v): v is CatalogMinRating => (CATALOG_MIN_RATINGS as readonly number[]).includes(v), `must be one of ${CATALOG_MIN_RATINGS.join(", ")}`)
+    .optional(),
+  length: z.enum(COURSE_LENGTHS).optional(),
 });
 
 const listQuery = filters

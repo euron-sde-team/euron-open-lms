@@ -24,6 +24,7 @@ export interface AdminCoursePatch {
   accessMode?: "FREE" | "PAID" | "SUBSCRIPTION_ONLY";
   includedInSubscription?: boolean;
   certificateEnabled?: boolean;
+  allowDownloads?: boolean;
   /** Admins only. */
   featured?: boolean;
 }

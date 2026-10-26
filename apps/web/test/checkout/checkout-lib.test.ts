@@ -227,6 +227,8 @@ describe("handoff", () => {
     name: "Academy",
     description: "SQL basics",
     prefill: { name: "Ada", email: "ada@example.org" },
+    mode: "stub",
+    checkoutPageUrl: null,
   };
 
   function fakeRazorpay() {

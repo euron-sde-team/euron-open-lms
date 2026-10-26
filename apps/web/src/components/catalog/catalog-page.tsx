@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronDown, Search, SearchX, SlidersHorizontal, X } from "lucide-react";
 import { flattenPages, nextCursor } from "@open-lms/api-client";
-import { COURSE_LEVELS, type CatalogFacets, type CatalogSort, type CourseLevel } from "@open-lms/types";
+import { CATALOG_MIN_RATINGS, COURSE_LENGTHS, COURSE_LEVELS, type CatalogFacets, type CatalogMinRating, type CatalogSort, type CourseLength, type CourseLevel } from "@open-lms/types";
 import {
   Button,
   DropdownMenu,
@@ -32,6 +32,7 @@ import {
   catalogHref,
   clearFilters,
   defaultSort,
+  minRatingFromParam,
   parseCatalogParams,
   resultTotal,
   toCatalogQuery,
@@ -49,6 +50,10 @@ import { qk } from "@/lib/query-keys";
 import { CurrencyMenu } from "./currency-menu";
 
 const PRICE_LABELS: Record<PriceFilter, string> = { free: "Free", paid: "Paid", subscription: "In plans" };
+const LENGTH_LABELS: Record<CourseLength, string> = { short: "Under 2 hours", medium: "2 to 6 hours", long: "Over 6 hours" };
+const ratingLabel = (r: CatalogMinRating) => `${r.toFixed(1)} and up`;
+
+type FilterKey = "level" | "language" | "price" | "minRating" | "length";
 
 /** /courses: search, URL filters, facet counts and a keyset grid. */
 export function CatalogPage() {
@@ -75,7 +80,7 @@ export function CatalogPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced]);
 
-  const filters = { q: state.q, category: state.category, level: state.level, language: state.language, price: state.price };
+  const filters = { q: state.q, category: state.category, level: state.level, language: state.language, price: state.price, minRating: state.minRating, length: state.length };
   const facets = useQuery({
     queryKey: qk.facets(filters),
     queryFn: ({ signal }) => api().catalog.facets(filters, signal),
@@ -158,6 +163,20 @@ export function CatalogPage() {
               options={priceOptions(facets.data, showSubscription)}
               onChange={(v) => set("price", v)}
               testId="filter-price"
+            />
+            <FilterMenu<`${CatalogMinRating}`>
+              label="Rating"
+              value={state.minRating ? `${state.minRating}` : undefined}
+              options={ratingOptions(facets.data)}
+              onChange={(v) => set("minRating", minRatingFromParam(v))}
+              testId="filter-rating"
+            />
+            <FilterMenu<CourseLength>
+              label="Length"
+              value={state.length}
+              options={lengthOptions(facets.data)}
+              onChange={(v) => set("length", v)}
+              testId="filter-length"
             />
           </div>
           <Button variant="ghost" size="sm" className="mb-1.5 shrink-0 md:hidden" onClick={() => setSheetOpen(true)} data-testid="filters-open">
@@ -269,6 +288,15 @@ function priceOptions(f: CatalogFacets | undefined, showSubscription: boolean) {
   return opts;
 }
 
+/** Highest threshold first ("4.5 and up" before "3.0 and up"). */
+function ratingOptions(f: CatalogFacets | undefined) {
+  return [...CATALOG_MIN_RATINGS].reverse().map((r) => ({ value: `${r}` as const, label: ratingLabel(r), count: f?.rating[`${r}`] ?? null }));
+}
+
+function lengthOptions(f: CatalogFacets | undefined) {
+  return COURSE_LENGTHS.map((l) => ({ value: l, label: LENGTH_LABELS[l], count: f?.length[l] ?? null }));
+}
+
 interface Opt<V extends string> {
   value: V;
   label: string;
@@ -308,11 +336,13 @@ function FilterMenu<V extends string>({ label, value, options, onChange, testId 
 }
 
 /** The chosen filters (other than the category, which the tabs show) as words you can remove. */
-function ActiveFilters({ state, onClear }: { state: CatalogUrlState; onClear: (k: "level" | "language" | "price") => void }) {
-  const items: { key: "level" | "language" | "price"; label: string }[] = [];
+function ActiveFilters({ state, onClear }: { state: CatalogUrlState; onClear: (k: FilterKey) => void }) {
+  const items: { key: FilterKey; label: string }[] = [];
   if (state.level) items.push({ key: "level", label: levelLabel(state.level) });
   if (state.language) items.push({ key: "language", label: languageName(state.language) });
   if (state.price) items.push({ key: "price", label: PRICE_LABELS[state.price] });
+  if (state.minRating) items.push({ key: "minRating", label: ratingLabel(state.minRating) });
+  if (state.length) items.push({ key: "length", label: LENGTH_LABELS[state.length] });
   if (!items.length) return null;
   return (
     <ul className="-mt-2 mb-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13.5px]" aria-label="Active filters">
@@ -339,7 +369,7 @@ function FiltersSheet({
   state: CatalogUrlState;
   facets: CatalogFacets | undefined;
   showSubscription: boolean;
-  onPick: <K extends "level" | "language" | "price">(k: K, v: CatalogUrlState[K] | undefined) => void;
+  onPick: <K extends FilterKey>(k: K, v: CatalogUrlState[K] | undefined) => void;
   onDone: () => void;
   onClear: () => void;
 }) {
@@ -362,6 +392,14 @@ function FiltersSheet({
           value={state.price ?? ""}
           options={priceOptions(facets, showSubscription)}
           onChange={(v) => onPick("price", (v || undefined) as PriceFilter | undefined)}
+        />
+        <RadioRows legend="Rating" name="sheet-rating" value={state.minRating ? `${state.minRating}` : ""} options={ratingOptions(facets)} onChange={(v) => onPick("minRating", minRatingFromParam(v))} />
+        <RadioRows
+          legend="Length"
+          name="sheet-length"
+          value={state.length ?? ""}
+          options={lengthOptions(facets)}
+          onChange={(v) => onPick("length", (v || undefined) as CourseLength | undefined)}
         />
         {facets?.languages.length ? (
           <RadioRows

@@ -98,6 +98,14 @@ export interface CheckoutQuote {
 export interface CheckoutStartRequest extends CheckoutQuoteRequest {
   /** One per click: a retried request returns the same order instead of a second one. */
   idempotencyKey: string;
+  /**
+   * Stripe only: where the hosted checkout sends the buyer back, instead of the web
+   * order page. The mobile app sends `<web origin>/checkout/app-return?app=openlms`, an
+   * https page that hands off to `openlms://checkout/return`; an app link in
+   * MOBILE_RETURN_SCHEMES is also accepted (the stub flow). `orderId` and `session_id`
+   * (or `canceled=1`) are appended.
+   */
+  returnUrl?: string;
 }
 
 /**
@@ -121,6 +129,15 @@ export type CheckoutHandoff =
       name: string;
       description: string;
       prefill: { name: string; email: string };
+      /**
+       * "native": open the real Razorpay SDK (mobile) or Checkout.js (web). "stub": the
+       * server points at the local stubs; a native app opens `checkoutPageUrl` in a browser
+       * tab instead, which redirects to `openlms://checkout/razorpay?razorpay_payment_id=...`
+       * (or to its `redirect` query parameter) with the same signed fields the modal hands
+       * its handler, ready for POST /api/checkout/razorpay/confirm.
+       */
+      mode: "native" | "stub";
+      checkoutPageUrl: string | null;
     }
   /** A 100%-off coupon or a FREE course: fulfilled already, go to the receipt. */
   | { type: "FULFILLED"; orderId: string; orderNumber: string };

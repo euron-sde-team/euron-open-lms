@@ -117,6 +117,7 @@ export async function toAdminCourse(c: Course, actor: Actor, exec: Executor = db
     accessMode: c.access_mode,
     includedInSubscription: c.included_in_subscription,
     certificateEnabled: c.certificate_enabled,
+    allowDownloads: c.allow_downloads,
     featured: c.featured,
     categoryIds,
     prices: prices.map(toAdminPrice),

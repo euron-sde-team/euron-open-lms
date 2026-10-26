@@ -22,6 +22,10 @@
  *     settings.learning.orderTtlMinutes, under the learner's idempotency key: a retried
  *     start (same key) returns the same order and handoff, never a second charge;
  *   - a zero total (a 100% coupon) is fulfilled at once with gateway FREE;
+ *   - Stripe returns to the web order page, or to `returnUrl` when the client sends one
+ *     (the mobile app's openlms:// link, or a page on the web origin: domain/safe-url.ts
+ *     checkoutReturnUrl); Razorpay hands the client modal options, and in stub mode a
+ *     full-page checkout on the stubs server that native apps open in a browser tab;
  *   - plans: a subscription row is created INCOMPLETE; Stripe Checkout runs in
  *     subscription mode on a recurring Price cached per price row and amount
  *     (prices.gateway_refs), Razorpay on a Subscription of a cached Plan.
@@ -29,7 +33,7 @@
 import type { BillingDetails, BillingInterval, CheckoutHandoff, CheckoutQuote, CheckoutQuoteRequest, CheckoutStartRequest, CouponKind, Order, Plan, QuoteLine, RazorpayConfirm, SellableType } from "@open-lms/types";
 import { randomBytes } from "node:crypto";
 import { sql } from "kysely";
-import { config } from "../core/config";
+import { config, razorpayCheckoutIsStub } from "../core/config";
 import { requireActive, type Actor } from "../core/context";
 import { withTransaction } from "../core/effects";
 import { badRequest, conflict, HttpError, notFound } from "../core/errors";
@@ -38,6 +42,7 @@ import { captureError, logger } from "../core/logger";
 import { db, type Executor } from "../db/kysely";
 import { orderNumber } from "../domain/orders";
 import { couponProblem, price, taxRuleFor, type CouponTerms, type Priced } from "../domain/pricing";
+import { checkoutReturnUrl } from "../domain/safe-url";
 import { presentOrder } from "../presenters/order.presenter";
 import { presentPlans } from "../presenters/plan.presenter";
 import { liveSubscriptionOf } from "../presenters/subscription.presenter";
@@ -210,9 +215,22 @@ export async function quote(actor: Actor, req: CheckoutQuoteRequest): Promise<Ch
 
 // ─── Start ──────────────────────────────────────────────────────────────────
 
-function returnUrls(orderId: string) {
+function returnUrls(orderId: string, returnUrl: string | null = null) {
+  if (returnUrl) {
+    const join = `${returnUrl}${returnUrl.includes("?") ? "&" : "?"}orderId=${orderId}`;
+    return { success: `${join}&session_id={CHECKOUT_SESSION_ID}`, cancel: `${join}&canceled=1` };
+  }
   const web = config.APP_WEB_URL.replace(/\/$/, "");
   return { success: `${web}/checkout/orders/${orderId}?session_id={CHECKOUT_SESSION_ID}`, cancel: `${web}/checkout/orders/${orderId}?canceled=1` };
+}
+
+/** The stubs' full-page Razorpay checkout (stub mode only), for apps that cannot inject Checkout.js. */
+function stubCheckoutPage(fields: { keyId: string; razorpayOrderId: string | null; subscriptionId: string | null; amountMinor: number; currency: string; name: string; description: string }): string | null {
+  if (!razorpayCheckoutIsStub()) return null;
+  const q = new URLSearchParams({ key: fields.keyId, amount: String(fields.amountMinor), currency: fields.currency, name: fields.name, description: fields.description });
+  if (fields.razorpayOrderId) q.set("order_id", fields.razorpayOrderId);
+  if (fields.subscriptionId) q.set("subscription_id", fields.subscriptionId);
+  return `${new URL(config.RAZORPAY_CHECKOUT_SCRIPT_URL).origin}/stub/razorpay/checkout-page?${q.toString()}`;
 }
 
 async function customerOf(actor: Actor) {
@@ -224,19 +242,25 @@ async function toHandoff(order: OrderRow, h: GatewayHandoff | null, actor: Actor
   if (!h) throw conflict("This checkout has closed; start again", "CHECKOUT_EXPIRED");
   if (h.redirectUrl) return { type: "REDIRECT", orderId: order.id, orderNumber: order.number, url: h.redirectUrl };
   const [customer, items, name] = await Promise.all([customerOf(actor), orderRepo.items([order.id]), academyName()]);
-  return {
-    type: "RAZORPAY_MODAL",
-    orderId: order.id,
-    orderNumber: order.number,
+  const modal = {
     keyId: config.RAZORPAY_KEY_ID ?? "",
-    scriptUrl: config.RAZORPAY_CHECKOUT_SCRIPT_URL,
     razorpayOrderId: h.razorpay?.orderId ?? null,
     subscriptionId: h.razorpay?.subscriptionId ?? null,
     amountMinor: order.total_minor,
     currency: order.currency,
     name,
     description: items.get(order.id)?.[0]?.title ?? order.number,
+  };
+  const checkoutPageUrl = stubCheckoutPage(modal);
+  return {
+    type: "RAZORPAY_MODAL",
+    orderId: order.id,
+    orderNumber: order.number,
+    scriptUrl: config.RAZORPAY_CHECKOUT_SCRIPT_URL,
+    ...modal,
     prefill: { name: customer.name, email: customer.email },
+    mode: checkoutPageUrl ? "stub" : "native",
+    checkoutPageUrl,
   };
 }
 
@@ -271,6 +295,8 @@ async function planRefFor(gateway: PaidGateway, row: PriceRow, amountMinor: numb
 
 export async function start(actorIn: Actor, req: CheckoutStartRequest): Promise<CheckoutHandoff> {
   const actor = requireActive(actorIn);
+  const returnUrl = req.returnUrl ? checkoutReturnUrl(req.returnUrl, config.APP_WEB_URL, config.MOBILE_RETURN_SCHEMES) : null;
+  if (req.returnUrl && !returnUrl) throw badRequest("returnUrl must be an app link or a page on this academy's website", "RETURN_URL_NOT_ALLOWED");
   const existing = await orderRepo.byIdempotencyKey(actor.id, req.idempotencyKey);
   if (existing) return handoffFor(existing, actor);
 
@@ -362,7 +388,7 @@ export async function start(actorIn: Actor, req: CheckoutStartRequest): Promise<
       const renewal = q.recurringTotal ?? q.sellable.price.amount_minor;
       const plan = q.sellable;
       const subscribe = (planRef: string) =>
-        gateway.createSubscription({ order: gOrder, customerRef, planRef, interval: plan.interval!, firstPaymentDiscountMinor: plan.trialDays > 0 ? 0 : Math.max(0, renewal - order.total_minor), trialDays: plan.trialDays, localSubscriptionId: subscriptionId, urls: returnUrls(order.id) });
+        gateway.createSubscription({ order: gOrder, customerRef, planRef, interval: plan.interval!, firstPaymentDiscountMinor: plan.trialDays > 0 ? 0 : Math.max(0, renewal - order.total_minor), trialDays: plan.trialDays, localSubscriptionId: subscriptionId, urls: returnUrls(order.id, returnUrl) });
       const planRef = await planRefFor(q.gateway, plan.price, renewal, plan.title, plan.interval!);
       try {
         handoff = await subscribe(planRef);
@@ -376,7 +402,7 @@ export async function start(actorIn: Actor, req: CheckoutStartRequest): Promise<
       }
       if (handoff.razorpay?.subscriptionId) await subscriptionRepo.setRef(subscriptionId, handoff.razorpay.subscriptionId, db);
     } else {
-      handoff = await gateway.createCheckout(gOrder, customer, customerRef, returnUrls(order.id));
+      handoff = await gateway.createCheckout(gOrder, customer, customerRef, returnUrls(order.id, returnUrl));
     }
     await orderRepo.setGatewayRef(order.id, handoff.ref);
     return toHandoff({ ...order, gateway_ref: handoff.ref }, handoff, actor);

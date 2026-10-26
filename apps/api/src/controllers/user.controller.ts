@@ -7,6 +7,8 @@ import { actorOf, meta } from "../middleware/http";
 import * as account from "../services/account.service";
 import * as users from "../services/user.service";
 
+const categorySwitches = z.object(Object.fromEntries(EMAIL_CATEGORIES.map((c) => [c, z.boolean()])) as Record<(typeof EMAIL_CATEGORIES)[number], z.ZodBoolean>).partial().strict();
+
 const accountPatch = z
   .object({
     displayName: text(80, 1),
@@ -16,7 +18,8 @@ const accountPatch = z
     website: z.string().trim().max(300).nullable(),
     avatarUploadId: id().nullable(),
     preferredCurrency: z.string().regex(/^[A-Z]{3}$/).nullable(),
-    emailPreferences: z.object(Object.fromEntries(EMAIL_CATEGORIES.map((c) => [c, z.boolean()])) as Record<(typeof EMAIL_CATEGORIES)[number], z.ZodBoolean>).partial().strict(),
+    emailPreferences: categorySwitches,
+    pushPreferences: categorySwitches,
   })
   .partial()
   .strict();

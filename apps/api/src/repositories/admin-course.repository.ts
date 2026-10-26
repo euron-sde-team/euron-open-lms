@@ -35,7 +35,7 @@ export interface CoursePriceRow {
 
 const COURSE_COLUMNS = [
   "id", "slug", "title", "subtitle", "description", "outcomes", "prerequisites", "level", "language", "cover_upload_id", "status", "access_mode",
-  "included_in_subscription", "certificate_enabled", "featured", "item_count", "duration_seconds", "enrollment_count", "rating_count", "rating_sum",
+  "included_in_subscription", "certificate_enabled", "allow_downloads", "featured", "item_count", "duration_seconds", "enrollment_count", "rating_count", "rating_sum",
   "created_by", "published_at", "created_at", "updated_at",
 ] as const;
 

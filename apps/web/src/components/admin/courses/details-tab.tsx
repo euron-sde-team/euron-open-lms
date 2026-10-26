@@ -37,6 +37,7 @@ const schema = z.object({
   accessMode: z.enum(["FREE", "PAID", "SUBSCRIPTION_ONLY"]),
   includedInSubscription: z.boolean(),
   certificateEnabled: z.boolean(),
+  allowDownloads: z.boolean(),
   featured: z.boolean(),
 });
 
@@ -55,6 +56,7 @@ const toForm = (c: AdminCourse): Form => ({
   accessMode: c.accessMode,
   includedInSubscription: c.includedInSubscription,
   certificateEnabled: c.certificateEnabled,
+  allowDownloads: c.allowDownloads,
   featured: c.featured,
 });
 
@@ -79,6 +81,7 @@ export function coursePatch(base: Form, next: Form, rights: Pick<CourseRights, "
     set("accessMode");
     set("includedInSubscription");
     set("certificateEnabled");
+    set("allowDownloads");
   }
   if (rights.isAdmin) set("featured");
   return out;
@@ -249,6 +252,7 @@ export function DetailsTab({ course, rights }: { course: AdminCourse; rights: Co
             disabled={disabled || !rights.canManage || access === "SUBSCRIPTION_ONLY"}
           />
           <ToggleRow control={control} name="certificateEnabled" label="Certificate on completion" hint="Learners who finish get a verifiable certificate." disabled={disabled || !rights.canManage} />
+          <ToggleRow control={control} name="allowDownloads" label="Offline downloads" hint="Learners can save videos in the mobile app (YouTube videos never download)." disabled={disabled || !rights.canManage} />
           {rights.isAdmin ? <ToggleRow control={control} name="featured" label="Featured" hint="Shown first on the home page and in the catalog." disabled={disabled} /> : null}
         </div>
       </FormSection>
@@ -268,7 +272,7 @@ export function DetailsTab({ course, rights }: { course: AdminCourse; rights: Co
   );
 }
 
-function ToggleRow({ control, name, label, hint, disabled }: { control: ReturnType<typeof useForm<Form>>["control"]; name: "includedInSubscription" | "certificateEnabled" | "featured"; label: string; hint: string; disabled?: boolean }) {
+function ToggleRow({ control, name, label, hint, disabled }: { control: ReturnType<typeof useForm<Form>>["control"]; name: "includedInSubscription" | "certificateEnabled" | "allowDownloads" | "featured"; label: string; hint: string; disabled?: boolean }) {
   const id = useId();
   return (
     <Controller

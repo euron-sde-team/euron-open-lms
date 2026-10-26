@@ -1,5 +1,5 @@
 /** Catalog endpoints: browse, course pages, bundles, instructors, free enrollment and the wishlist. See docs/api/rest-contract.md. */
-import type { BundleCard, BundleDetail, CatalogFacets, CatalogSort, Category, CourseCard, CourseDetail, CourseLevel, Instructor, Page, Review } from "@open-lms/types";
+import type { BundleCard, BundleDetail, CatalogFacets, CatalogMinRating, CatalogSort, Category, CourseCard, CourseDetail, CourseLength, CourseLevel, Instructor, Page, Review } from "@open-lms/types";
 import { enc, type Helpers, type PageQuery } from "./helpers";
 
 export interface CatalogFilters {
@@ -9,6 +9,10 @@ export interface CatalogFilters {
   level?: CourseLevel;
   language?: string;
   price?: "free" | "paid" | "subscription";
+  /** Average rating at least this; unrated courses are left out. */
+  minRating?: CatalogMinRating;
+  /** By total duration: short under 2 hours, medium 2 to 6 hours, long over 6 hours. */
+  length?: CourseLength;
 }
 
 export interface CatalogQuery extends CatalogFilters, PageQuery {

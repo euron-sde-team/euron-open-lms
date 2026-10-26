@@ -9,7 +9,7 @@ output "openai_secret_arn" {
 }
 
 output "secret_refs" {
-  description = "ECS container `secrets` entries (signing keys, TOTP key, and the OpenAI, payment and EVS keys that are enabled): [{ name, valueFrom = \"<arn>:<json key>::\" }]."
+  description = "ECS container `secrets` entries (signing keys, TOTP key, and the OpenAI, payment, EVS and FCM keys that are enabled): [{ name, valueFrom = \"<arn>:<json key>::\" }]."
   value       = local.refs
 }
 
@@ -31,4 +31,9 @@ output "payments_secret_arn" {
 output "evs_secret_arn" {
   description = "ARN of the <prefix>/evs secret (euron-video-system keys), or null when it is not created."
   value       = var.create_evs_secret ? aws_secretsmanager_secret.evs[0].arn : null
+}
+
+output "push_secret_arn" {
+  description = "ARN of the <prefix>/push secret (FCM service account), or null when it is not created."
+  value       = var.create_push_secret ? aws_secretsmanager_secret.push[0].arn : null
 }

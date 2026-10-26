@@ -15,6 +15,11 @@
  *              apps/api/src/integrations/ai/tasks.ts deterministically.
  *   EVS        playback sessions that point at a tiny HLS stream served from here, the
  *              video list, and signed video.ready / video.failed webhooks.
+ *   FCM        the OAuth token exchange (JWT bearer grant) and HTTP v1 messages:send,
+ *              recording every message for GET /fcm/messages; tokens starting with
+ *              "dead" answer UNREGISTERED, "bad" INVALID_ARGUMENT.
+ *   Razorpay checkout page  the modal as a full page for native apps: Pay redirects to
+ *              the app link with the same signed fields the modal hands its handler.
  *
  * Every endpoint is listed in README.md. State lives in memory and is lost on restart.
  *
@@ -159,6 +164,8 @@ export function createStubs(initial = configFromEnv()) {
   const state = {
     stripe: { customers: new Map(), prices: new Map(), coupons: new Map(), sessions: new Map(), subscriptions: new Map(), invoices: new Map(), paymentIntents: new Map(), charges: new Map(), refunds: new Map() },
     razorpay: { orders: new Map(), payments: new Map(), refunds: new Map(), plans: new Map(), subscriptions: new Map() },
+    /** Access tokens handed out and every message accepted, oldest first (GET /fcm/messages). */
+    fcm: { tokens: new Set(), messages: [] },
     /** Every webhook this process tried to deliver, newest last (GET /stub/webhooks). */
     deliveries: [],
   };
@@ -736,7 +743,9 @@ ${s.status === "open" ? `${button("pay", "Pay", "#0E7C8C")}${button("fail", "Fai
       const id = x[1];
       if (id.startsWith("missing")) return send(res, 404, { error: { code: "NOT_FOUND", message: "no such video" } });
       if (id.startsWith("processing") || id === "vid_processing") return send(res, 422, { error: { code: "NOT_READY", message: "video is processing" } });
-      const exp = now() + 3600;
+      // EVS caps a session at one hour; ttlSeconds asks for less (or the maximum, for downloads).
+      const ttl = Math.min(3600, Math.max(60, Number(body.ttlSeconds ?? 3600) || 3600));
+      const exp = now() + ttl;
       const token = playToken(id, exp);
       return send(res, 201, {
         sessionId: rid("ps_"),
@@ -778,6 +787,99 @@ ${s.status === "open" ? `${button("pay", "Pay", "#0E7C8C")}${button("fail", "Fai
     return null;
   }
 
+  // ─── FCM ─────────────────────────────────────────────────────────────────────
+
+  /** A JWT's claims without verifying it (the stub has no public key; shape is what it checks). */
+  function jwtClaims(assertion) {
+    const parts = String(assertion ?? "").split(".");
+    if (parts.length !== 3) return null;
+    try {
+      return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+    } catch {
+      return null;
+    }
+  }
+
+  async function fcm(req, res, url, body) {
+    const p = url.pathname;
+    let x;
+    if (p === "/fcm/token" && req.method === "POST") {
+      const claims = jwtClaims(body.assertion);
+      if (body.grant_type !== "urn:ietf:params:oauth:grant-type:jwt-bearer" || !claims?.iss || !String(claims.scope ?? "").includes("firebase.messaging")) return send(res, 400, { error: "invalid_grant", error_description: "Invalid JWT" });
+      const token = rid("ya29.stub-", 30);
+      state.fcm.tokens.add(token);
+      return send(res, 200, { access_token: token, expires_in: 3599, token_type: "Bearer" });
+    }
+    if ((x = p.match(/^\/v1\/projects\/([\w.-]+)\/messages:send$/)) && req.method === "POST") {
+      const auth = String(req.headers.authorization ?? "");
+      if (!auth.startsWith("Bearer ") || !state.fcm.tokens.has(auth.slice(7))) return send(res, 401, { error: { code: 401, status: "UNAUTHENTICATED", message: "Request had invalid authentication credentials." } });
+      const message = body.message ?? {};
+      const target = String(message.token ?? "");
+      if (!target || target.startsWith("bad")) return send(res, 400, { error: { code: 400, status: "INVALID_ARGUMENT", message: "The registration token is not a valid FCM registration token", details: [{ "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError", errorCode: "INVALID_ARGUMENT" }] } });
+      if (target.startsWith("dead")) return send(res, 404, { error: { code: 404, status: "NOT_FOUND", message: "Requested entity was not found.", details: [{ "@type": "type.googleapis.com/google.firebase.fcm.v1.FcmError", errorCode: "UNREGISTERED" }] } });
+      const name = `projects/${x[1]}/messages/${rid("0:", 16)}`;
+      state.fcm.messages.push({ name, project: x[1], message, at: new Date().toISOString() });
+      if (state.fcm.messages.length > 500) state.fcm.messages.shift();
+      return send(res, 200, { name });
+    }
+    if (p === "/fcm/messages" && req.method === "GET") {
+      const token = url.searchParams.get("token");
+      return send(res, 200, { messages: state.fcm.messages.filter((m) => !token || m.message.token === token) });
+    }
+    if ((p === "/fcm/reset" && req.method === "POST") || (p === "/fcm/messages" && req.method === "DELETE")) {
+      state.fcm.messages.length = 0;
+      return send(res, 200, { ok: true });
+    }
+    return send(res, 404, { error: { message: "not found" } });
+  }
+
+  // ─── Razorpay checkout as a page (native apps) ───────────────────────────────
+
+  const APP_RETURN = "openlms://checkout/razorpay";
+
+  /** Where Pay / Fail / Cancel send the browser: the app link, or `redirect` when the app passes one. */
+  function appReturn(redirectTo, params) {
+    const base = String(redirectTo || APP_RETURN);
+    return `${base}${base.includes("?") ? "&" : "?"}${new URLSearchParams(params).toString()}`;
+  }
+
+  function razorpayPage(q) {
+    const amount = Number(q.amount);
+    const label = Number.isFinite(amount) && q.amount ? `${(amount / 100).toFixed(2)} ${escapeHtml(String(q.currency ?? "").toUpperCase())}` : "";
+    const hidden = ["key", "order_id", "subscription_id", "redirect"].map((k) => (q[k] ? `<input type="hidden" name="${k}" value="${escapeHtml(q[k])}">` : "")).join("");
+    const button = (action, label, color) => `<form method="post" action="/stub/razorpay/checkout-page/${action}" style="display:inline">${hidden}<button type="submit" data-action="${action}" style="margin:4px;padding:12px 20px;border:0;border-radius:6px;background:${color};color:#fff;font-weight:600;font-size:16px">${label}</button></form>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stub Razorpay Checkout</title></head><body style="font-family:system-ui,sans-serif;max-width:480px;margin:48px auto;padding:0 16px">
+<h1 style="font-size:20px">Test payment (local stub)</h1><p>No real money moves.</p>
+<p data-name>${escapeHtml(q.name ?? "")}${q.description ? `: ${escapeHtml(q.description)}` : ""}</p><p style="font-size:18px;font-weight:600" data-amount>${label}</p>
+${button("pay", "Pay", "#0E7C8C")}${button("fail", "Fail", "#b91c1c")}${button("cancel", "Cancel", "#475569")}
+</body></html>`;
+  }
+
+  async function razorpayCheckoutPage(req, res, url, body) {
+    const p = url.pathname;
+    if (p === "/stub/razorpay/checkout-page" && req.method === "GET") {
+      const q = Object.fromEntries(url.searchParams);
+      if (!q.order_id && !q.subscription_id) return sendText(res, 400, "order_id or subscription_id is required", "text/plain");
+      if (q.key && q.key !== config.razorpayKeyId) return sendText(res, 401, "unknown key", "text/plain");
+      return sendText(res, 200, razorpayPage(q), "text/html; charset=utf-8", { "Cache-Control": "no-store" });
+    }
+    const x = p.match(/^\/stub\/razorpay\/checkout-page\/(pay|fail|cancel)$/);
+    if (x && req.method === "POST") {
+      if (body.key && body.key !== config.razorpayKeyId) return send(res, 401, { error: "unknown key" });
+      const target = { order_id: body.order_id, subscription_id: body.subscription_id };
+      const wantsJson = String(req.headers.accept ?? "").includes("application/json");
+      let location;
+      if (x[1] === "cancel") location = appReturn(body.redirect, { canceled: "1" });
+      else {
+        const out = x[1] === "pay" ? await payRazorpay(target, body.deliver ?? "sync") : await failRazorpay(target, body.deliver ?? "sync");
+        if (out.error) return wantsJson ? send(res, out.status, { error: out.error }) : sendText(res, out.status, out.error, "text/plain");
+        location = x[1] === "pay" ? appReturn(body.redirect, out.response) : appReturn(body.redirect, { error: "payment_failed", payment_id: out.response.error.metadata.payment_id });
+      }
+      return wantsJson ? send(res, 200, { redirect: location }) : redirect(res, location);
+    }
+    return send(res, 404, { error: "not found" });
+  }
+
   // ─── Router ──────────────────────────────────────────────────────────────────
 
   async function handler(req, res) {
@@ -793,7 +895,7 @@ ${s.status === "open" ? `${button("pay", "Pay", "#0E7C8C")}${button("fail", "Fai
     }
     const p = url.pathname;
     try {
-      if (p === "/" || p === "/health") return send(res, 200, { ok: true, services: ["stripe", "razorpay", "openai", "evs"] });
+      if (p === "/" || p === "/health") return send(res, 200, { ok: true, services: ["stripe", "razorpay", "openai", "evs", "fcm"] });
       if (p === "/stub/webhooks" && req.method === "GET") return send(res, 200, { deliveries: state.deliveries.slice(-100) });
       if (p === "/v1/chat/completions" && req.method === "POST") {
         const out = completion(body);
@@ -801,6 +903,8 @@ ${s.status === "open" ? `${button("pay", "Pay", "#0E7C8C")}${button("fail", "Fai
       }
       const evsOut = p.startsWith("/v1/videos") || p.startsWith("/stub/evs/") ? await evs(req, res, url, body) : null;
       if (evsOut !== null || res.headersSent) return;
+      if (p.startsWith("/fcm/") || /^\/v1\/projects\/[^/]+\/messages:send$/.test(p)) return await fcm(req, res, url, body);
+      if (p.startsWith("/stub/razorpay/checkout-page")) return await razorpayCheckoutPage(req, res, url, body);
       if (p.startsWith("/stub/stripe/")) return await stripeStub(req, res, url, body);
       if (p.startsWith("/stub/razorpay/")) return await razorpayStub(req, res, url, body);
       if (p.startsWith("/v1/")) {

@@ -27,7 +27,12 @@ export interface RunningStubs {
   port: number;
   /** Mutable: point webhooks at a test server after it starts listening. */
   config: StubConfig;
-  state: { deliveries: StubDelivery[]; stripe: Record<string, Map<string, Record<string, unknown>>>; razorpay: Record<string, Map<string, Record<string, unknown>>> };
+  state: {
+    deliveries: StubDelivery[];
+    stripe: Record<string, Map<string, Record<string, unknown>>>;
+    razorpay: Record<string, Map<string, Record<string, unknown>>>;
+    fcm: { tokens: Set<string>; messages: { name: string; project: string; message: Record<string, unknown>; at: string }[] };
+  };
   close(): Promise<void>;
 }
 

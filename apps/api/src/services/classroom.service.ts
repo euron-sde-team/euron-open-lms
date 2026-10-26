@@ -76,7 +76,7 @@ export async function classroom(actor: Actor, slug: string): Promise<Classroom> 
   const order = curriculum.items.map((i) => i.id);
 
   return {
-    course: { id: courseId, slug: String(course.slug), title: course.title, coverUrl: urlOf(cover, course.cover_upload_id), certificateEnabled: course.certificate_enabled },
+    course: { id: courseId, slug: String(course.slug), title: course.title, coverUrl: urlOf(cover, course.cover_upload_id), certificateEnabled: course.certificate_enabled, allowDownloads: course.allow_downloads },
     role: granted.enrollmentId ? "LEARNER" : "STAFF",
     enrollment: enrollment
       ? {

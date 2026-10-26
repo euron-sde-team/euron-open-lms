@@ -87,5 +87,9 @@ describe("upload validation", () => {
     expect(validateUpload({ type: "application/x-msdownload", name: "a.exe", size: 1 })).toMatch(/not supported/);
     expect(validateUpload({ type: "image/png", name: "a.png", size: 16 * 1024 * 1024 })).toMatch(/15 MB/);
     expect(validateUpload({ type: "video/mp4", name: "a.mp4", size: 100 * 1024 * 1024 })).toBeNull();
+    // Zip archives (source code, datasets) are accepted for submissions and resources, up to 50 MB.
+    expect(validateUpload({ type: "application/zip", name: "code.zip", size: 40 * 1024 * 1024 })).toBeNull();
+    expect(validateUpload({ name: "code.zip", size: 1 })).toBeNull();
+    expect(validateUpload({ type: "application/zip", name: "code.zip", size: 51 * 1024 * 1024 })).toMatch(/50 MB/);
   });
 });

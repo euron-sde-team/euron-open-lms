@@ -1,4 +1,4 @@
-import { EMAIL_CATEGORIES, type EmailCategory, type Me, type UserSummary } from "@open-lms/types";
+import { EMAIL_CATEGORIES, PUSH_DEFAULTS, type EmailCategory, type Me, type UserSummary } from "@open-lms/types";
 import { type Executor, db } from "../db/kysely";
 import { isOperator } from "../domain/admin-permissions";
 import { userRepo, type SummaryRow, type UserRow } from "../repositories/user.repository";
@@ -36,6 +36,12 @@ export function emailPreferences(stored: unknown): Record<EmailCategory, boolean
   return Object.fromEntries(EMAIL_CATEGORIES.map((c) => [c, s[c] !== false])) as Record<EmailCategory, boolean>;
 }
 
+/** Missing keys take PUSH_DEFAULTS (product updates start off on a phone). */
+export function pushPreferences(stored: unknown): Record<EmailCategory, boolean> {
+  const s = (stored && typeof stored === "object" ? stored : {}) as Record<string, unknown>;
+  return Object.fromEntries(EMAIL_CATEGORIES.map((c) => [c, typeof s[c] === "boolean" ? (s[c] as boolean) : PUSH_DEFAULTS[c]])) as Record<EmailCategory, boolean>;
+}
+
 export async function toMe(row: UserRow, exec: Executor = db): Promise<Me> {
   const [summary, subscription] = await Promise.all([summaryOf(row.id, exec), liveSubscriptionOf(row.id, exec)]);
   return {
@@ -50,6 +56,7 @@ export async function toMe(row: UserRow, exec: Executor = db): Promise<Me> {
     certificateName: row.certificate_name,
     preferredCurrency: row.preferred_currency,
     emailPreferences: emailPreferences(row.email_preferences),
+    pushPreferences: pushPreferences(row.push_preferences),
     deletionRequestedAt: row.deletion_requested_at?.toISOString() ?? null,
     canOpenAdmin: isOperator(row.role),
     subscription,

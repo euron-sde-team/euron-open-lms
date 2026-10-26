@@ -10,7 +10,7 @@ import { badRequest, notFound } from "../core/errors";
 import { db } from "../db/kysely";
 import { cleanDisplayName } from "../domain/display-name";
 import { safeUrl } from "../domain/safe-url";
-import { emailPreferences, toMe } from "../presenters/user.presenter";
+import { emailPreferences, pushPreferences, toMe } from "../presenters/user.presenter";
 import { sessionRepo } from "../repositories/session.repository";
 import { userRepo } from "../repositories/user.repository";
 import { audit } from "./audit.service";
@@ -32,6 +32,7 @@ export interface AccountPatch {
   avatarUploadId?: string | null;
   preferredCurrency?: string | null;
   emailPreferences?: Partial<Record<EmailCategory, boolean>>;
+  pushPreferences?: Partial<Record<EmailCategory, boolean>>;
 }
 
 export async function updateMe(actor: Actor, patch: AccountPatch): Promise<Me> {
@@ -65,6 +66,12 @@ export async function updateMe(actor: Actor, patch: AccountPatch): Promise<Me> {
     for (const c of EMAIL_CATEGORIES) if (typeof patch.emailPreferences[c] === "boolean") merged[c] = patch.emailPreferences[c] as boolean;
     prefs = JSON.stringify(merged);
   }
+  let push: string | undefined;
+  if (patch.pushPreferences) {
+    const merged = { ...pushPreferences(row0.push_preferences) };
+    for (const c of EMAIL_CATEGORIES) if (typeof patch.pushPreferences[c] === "boolean") merged[c] = patch.pushPreferences[c] as boolean;
+    push = JSON.stringify(merged);
+  }
   const row = await userRepo.update(actor.id, {
     ...(displayName !== undefined ? { display_name: displayName } : {}),
     ...(certificateName !== undefined ? { certificate_name: certificateName } : {}),
@@ -74,6 +81,7 @@ export async function updateMe(actor: Actor, patch: AccountPatch): Promise<Me> {
     ...(avatar !== undefined ? { avatar_upload_id: avatar } : {}),
     ...(patch.preferredCurrency !== undefined ? { preferred_currency: patch.preferredCurrency } : {}),
     ...(prefs !== undefined ? { email_preferences: prefs } : {}),
+    ...(push !== undefined ? { push_preferences: push } : {}),
   });
   if (!row) throw notFound("User not found");
   return toMe(row);

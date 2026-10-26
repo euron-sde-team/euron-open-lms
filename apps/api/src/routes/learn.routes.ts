@@ -5,6 +5,7 @@
  */
 import { Router } from "express";
 import * as ctrl from "../controllers/classroom.controller";
+import * as devices from "../controllers/device.controller";
 import { authenticate, optionalAuth } from "../middleware/auth";
 import { rateLimit } from "../middleware/rate-limit";
 
@@ -21,6 +22,13 @@ router.get("/items/:itemId", optionalAuth, ctrl.item);
  * `resumeAt`. 409 NOT_A_VIDEO, 409 VIDEO_NOT_READY, 503 VIDEO_NOT_CONFIGURED, 502 VIDEO_SERVICE_UNAVAILABLE, 429.
  */
 router.post("/items/:itemId/playback", optionalAuth, rateLimit("learn-playback", 120, 3600), ctrl.playback);
+/**
+ * Save a video for offline viewing on this device: `{ deviceId }`. Same access as playback (a free preview is not enough).
+ * 201 `OfflineDownload`: an EVS manifest (fetch it before `expiresAt`) or the HLS/MP4 URL, the watermark, and
+ * `offlineExpiresAt`. 409 OFFLINE_DISABLED, DOWNLOADS_NOT_ALLOWED, NOT_A_VIDEO, DOWNLOAD_NOT_SUPPORTED (YouTube),
+ * VIDEO_NOT_READY, DOWNLOAD_LIMIT_REACHED (`details.limit`); 403 COURSE_ACCESS_REQUIRED; 503/502 as playback.
+ */
+router.post("/items/:itemId/downloads", authenticate, rateLimit("learn-downloads", 60, 3600), devices.startDownload);
 /**
  * A video heartbeat `ProgressBeat` `{ positionSeconds, playedSeconds, durationSeconds? }`. Returns `ProgressResult`;
  * completes the video once enough was really played (and issues the certificate when it finishes the course).

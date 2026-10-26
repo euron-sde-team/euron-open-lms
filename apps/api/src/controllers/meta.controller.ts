@@ -2,7 +2,7 @@
 import type { AcademyMeta } from "@open-lms/types";
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { aiAvailable, config, razorpayEnabled, stripeEnabled } from "../core/config";
+import { aiAvailable, config, pushEnabled, razorpayEnabled, stripeEnabled } from "../core/config";
 import { parse } from "../core/validate";
 import { db } from "../db/kysely";
 import { loadMedia, urlOf } from "../presenters/media.presenter";
@@ -38,6 +38,13 @@ export async function meta(_req: Request, res: Response) {
     subscriptions: !!plan,
     ai: { quizGeneration: ai, gradingAssist: ai, polish: ai },
     support: { email: settings.supportEmail },
+    mobile: {
+      iosWebPurchaseLink: settings.mobile.iosWebPurchaseLink,
+      minSupportedVersion: settings.mobile.minSupportedVersion,
+      downloadsEnabled: settings.learning.offline.enabled,
+      pushEnabled: pushEnabled(),
+      appReturnSchemes: config.MOBILE_RETURN_SCHEMES,
+    },
   };
   res.setHeader("Cache-Control", "public, max-age=30");
   res.json(body);

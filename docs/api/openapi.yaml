@@ -26,7 +26,7 @@ components:
       properties: { error: { type: string }, code: { type: string }, requestId: { type: string } }
 tags:
   - name: "auth"
-    description: "sign-up, sign-in, sessions, email verification, password reset and two-factor."
+    description: "sign-up, sign-in, sessions, email verification, password reset and two-factor. With `X-Client: native` every session is `IssuedNativeSession` (the refresh token in the body, never a cookie) and refresh / logout take `{ refreshToken }` in the body. New passwords are 10 to 128 characters (400 VALIDATION_FAILED naming the field)."
   - name: "users"
     description: "your account, sessions, export and deletion."
   - name: "meta"
@@ -40,7 +40,7 @@ tags:
   - name: "learn"
     description: "the classroom. Every route goes through services/access.service.ts (an enrollment, an active plan, course staff, or a free preview item). The `items/` and `notes/` routes are declared before `/:courseSlug` so the literal segments win."
   - name: "my"
-    description: "the signed-in learner's own learning."
+    description: "the signed-in learner's own learning, and the mobile app's push devices and offline downloads."
   - name: "certificates"
     description: "anyone may verify a serial; only its owner downloads the PDF."
   - name: "assessments"
@@ -112,7 +112,7 @@ paths:
       tags: ["auth"]
       operationId: "auth_refresh"
       summary: "Rotate the refresh cookie and return a new access token (`AuthResult`). 204 when there is no cookie (signed out);..."
-      description: "Rotate the refresh cookie and return a new access token (`AuthResult`). 204 when there is no cookie (signed out); 401 SESSION_EXPIRED for a revoked or replayed one."
+      description: "Rotate the refresh cookie and return a new access token (`AuthResult`). 204 when there is no cookie (signed out); 401 SESSION_EXPIRED for a revoked or replayed one. Native: body `{ refreshToken }`, returns `IssuedNativeSession`."
       security: []
       responses:
         "2XX": { description: Success }
@@ -121,7 +121,8 @@ paths:
     post:
       tags: ["auth"]
       operationId: "auth_logout"
-      summary: "Logout"
+      summary: "Revoke this session's family. 204. Native: body `{ refreshToken, deviceToken? }`; the device also stops receiving..."
+      description: "Revoke this session's family. 204. Native: body `{ refreshToken, deviceToken? }`; the device also stops receiving pushes."
       security: []
       responses:
         "2XX": { description: Success }
@@ -130,7 +131,7 @@ paths:
     post:
       tags: ["auth"]
       operationId: "auth_logoutEverywhere"
-      summary: "Logout everywhere"
+      summary: "Revoke every session and access token, and remove every push device. 204."
       security: [{ bearer: [] }]
       responses:
         "2XX": { description: Success }
@@ -389,8 +390,8 @@ paths:
     get:
       tags: ["catalog"]
       operationId: "catalog_listCourses"
-      summary: "Search and browse:..."
-      description: "Search and browse: `?q=&category=&level=&language=&price=free|paid|subscription&sort=relevance|popular|newest|rating| price_asc|price_desc&currency=&cursor=&limit=`. Returns `Page<CourseCard>` (prices in the display currency; `viewer` when signed in). 400 INVALID_CURSOR.\n\nSigned-in callers may see more."
+      summary: "Search and browse: `?q=&category=&level=&language=&price=free|paid|subscription&minRating=3|3.5|4|4.5&length=short|..."
+      description: "Search and browse: `?q=&category=&level=&language=&price=free|paid|subscription&minRating=3|3.5|4|4.5&length=short| medium|long&sort=relevance|popular|newest|rating|price_asc|price_desc&currency=&cursor=&limit=`. `minRating` keeps rated courses whose average is at least that; `length` buckets the total duration (short under 2 hours, medium 2 to 6 hours, long over 6 hours). Returns `Page<CourseCard>` (prices in the display currency; `viewer` when signed in). 400 INVALID_CURSOR.\n\nSigned-in callers may see more."
       security: [{}, { bearer: [] }]
       responses:
         "2XX": { description: Success }
@@ -399,8 +400,8 @@ paths:
     get:
       tags: ["catalog"]
       operationId: "catalog_facets"
-      summary: "Counts per category, level, language and price for the same filters (`CatalogFacets`); each facet ignores its own..."
-      description: "Counts per category, level, language and price for the same filters (`CatalogFacets`); each facet ignores its own filter."
+      summary: "Counts per category, level, language, price, minimum rating and length for the same filters (`CatalogFacets`); each..."
+      description: "Counts per category, level, language, price, minimum rating and length for the same filters (`CatalogFacets`); each facet ignores its own filter. The rating counts overlap (a 4.6 course counts under 3, 3.5, 4 and 4.5)."
       security: []
       responses:
         "2XX": { description: Success }
@@ -534,6 +535,18 @@ paths:
       summary: "Start playing a video lecture: body `{}`, returns `Playback` (an EVS session, the HLS/MP4 URL or a YouTube embed)..."
       description: "Start playing a video lecture: body `{}`, returns `Playback` (an EVS session, the HLS/MP4 URL or a YouTube embed) with `resumeAt`. 409 NOT_A_VIDEO, 409 VIDEO_NOT_READY, 503 VIDEO_NOT_CONFIGURED, 502 VIDEO_SERVICE_UNAVAILABLE, 429.\n\nSigned-in callers may see more."
       security: [{}, { bearer: [] }]
+      parameters:
+        - { name: itemId, in: path, required: true, schema: { type: string } }
+      responses:
+        "2XX": { description: Success }
+        "4XX": { description: Client error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  "/api/learn/items/{itemId}/downloads":
+    post:
+      tags: ["learn"]
+      operationId: "learn_startDownload"
+      summary: "Save a video for offline viewing on this device: `{ deviceId }`. Same access as playback (a free preview is not..."
+      description: "Save a video for offline viewing on this device: `{ deviceId }`. Same access as playback (a free preview is not enough). 201 `OfflineDownload`: an EVS manifest (fetch it before `expiresAt`) or the HLS/MP4 URL, the watermark, and `offlineExpiresAt`. 409 OFFLINE_DISABLED, DOWNLOADS_NOT_ALLOWED, NOT_A_VIDEO, DOWNLOAD_NOT_SUPPORTED (YouTube), VIDEO_NOT_READY, DOWNLOAD_LIMIT_REACHED (`details.limit`); 403 COURSE_ACCESS_REQUIRED; 503/502 as playback."
+      security: [{ bearer: [] }]
       parameters:
         - { name: itemId, in: path, required: true, schema: { type: string } }
       responses:
@@ -684,6 +697,48 @@ paths:
       operationId: "my_certificatesList"
       summary: "Your certificates, newest first (`Certificate[]`, with signed `pdfUrl` once rendered)."
       security: [{ bearer: [] }]
+      responses:
+        "2XX": { description: Success }
+        "4XX": { description: Client error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  "/api/my/devices":
+    put:
+      tags: ["my"]
+      operationId: "my_registerDevice"
+      summary: "Register this app for push notifications: `{ platform: \"IOS\" | \"ANDROID\", token, appVersion?, locale? }` (the FCM..."
+      description: "Register this app for push notifications: `{ platform: \"IOS\" | \"ANDROID\", token, appVersion?, locale? }` (the FCM registration token). Upserts by token: a token another account registered moves to you. Returns `PushDevice`."
+      security: [{ bearer: [] }]
+      responses:
+        "2XX": { description: Success }
+        "4XX": { description: Client error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  "/api/my/devices/{token}":
+    delete:
+      tags: ["my"]
+      operationId: "my_removeDevice"
+      summary: "Stop pushes to this token (URL-encoded). 204, also when the token is unknown or someone else's."
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        "2XX": { description: Success }
+        "4XX": { description: Client error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  "/api/my/downloads/validate":
+    post:
+      tags: ["my"]
+      operationId: "my_validateDownloads"
+      summary: "Which saved videos may keep playing offline: `{ deviceId, itemIds }` (at most 500). Returns `OfflineValidation` `{..."
+      description: "Which saved videos may keep playing offline: `{ deviceId, itemIds }` (at most 500). Returns `OfflineValidation` `{ valid: [{ itemId, offlineExpiresAt }], revoked: [itemId] }`; valid ones get a fresh window, delete the revoked copies."
+      security: [{ bearer: [] }]
+      responses:
+        "2XX": { description: Success }
+        "4XX": { description: Client error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  "/api/my/downloads/{itemId}":
+    delete:
+      tags: ["my"]
+      operationId: "my_removeDownload"
+      summary: "Forget a saved video: `?deviceId=`. 204 (idempotent)."
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: itemId, in: path, required: true, schema: { type: string } }
       responses:
         "2XX": { description: Success }
         "4XX": { description: Client error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
@@ -1081,7 +1136,7 @@ paths:
       tags: ["admin/courses"]
       operationId: "adminCourses_update"
       summary: "Edit `{ title?, subtitle?, description?, outcomes?, prerequisites?, level?, language?, coverUploadId?, categoryIds?,..."
-      description: "Edit `{ title?, subtitle?, description?, outcomes?, prerequisites?, level?, language?, coverUploadId?, categoryIds?, slug?, accessMode?, includedInSubscription?, certificateEnabled?, featured? }`. Settings fields (slug, access, certificate) need OWNER; featured needs ADMIN. Never changes status. Returns `AdminCourse`. 409 SLUG_TAKEN, 400 CATEGORY_NOT_FOUND, MEDIA_INVALID."
+      description: "Edit `{ title?, subtitle?, description?, outcomes?, prerequisites?, level?, language?, coverUploadId?, categoryIds?, slug?, accessMode?, includedInSubscription?, certificateEnabled?, allowDownloads?, featured? }`. Settings fields (slug, access, certificate, downloads) need OWNER; featured needs ADMIN. Never changes status. Returns `AdminCourse`. 409 SLUG_TAKEN, 400 CATEGORY_NOT_FOUND, MEDIA_INVALID."
       security: [{ bearer: [] }]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -1821,6 +1876,30 @@ paths:
       operationId: "admin_erase"
       summary: "Erase an account now `{ reason }` (ADMIN only): identity anonymised, learning traces deleted, financial records..."
       description: "Erase an account now `{ reason }` (ADMIN only): identity anonymised, learning traces deleted, financial records kept. 204. 409 SUBSCRIPTION_ACTIVE, ALREADY_ERASED; 403 SELF_ACTION, TARGET_PROTECTED."
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "2XX": { description: Success }
+        "4XX": { description: Client error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  "/api/admin/learners/{id}/downloads":
+    get:
+      tags: ["admin"]
+      operationId: "admin_downloads"
+      summary: "The learner's offline downloads (`Page<AdminDownloadRow>`), newest first: item, course, device, window, revoked...."
+      description: "The learner's offline downloads (`Page<AdminDownloadRow>`), newest first: item, course, device, window, revoked. Area learners."
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "2XX": { description: Success }
+        "4XX": { description: Client error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  "/api/admin/downloads/{id}/revoke":
+    post:
+      tags: ["admin"]
+      operationId: "admin_revokeDownload"
+      summary: "Revoke one offline download `{}`: the app deletes the copy at its next check. Audited `download.revoke`...."
+      description: "Revoke one offline download `{}`: the app deletes the copy at its next check. Audited `download.revoke`. `AdminDownloadRow`. 409 DOWNLOAD_REVOKED. Area learners."
       security: [{ bearer: [] }]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }

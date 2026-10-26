@@ -51,3 +51,26 @@ export function youtubeId(url: string): string | null {
     return null;
   }
 }
+
+/**
+ * Where a hosted checkout may send the buyer back: a link into the mobile app (one of
+ * `schemes`, like `openlms://checkout/stripe`) or a page on the web app's own origin.
+ * Anything else would turn checkout into an open redirect. Returns the URL to use (no
+ * fragment, so appended query parameters stay visible), or null.
+ */
+export function checkoutReturnUrl(raw: string, webOrigin: string, schemes: readonly string[]): string | null {
+  const s = raw.trim();
+  // eslint-disable-next-line no-control-regex
+  if (!s || s.length > MAX_URL || /[\u0000-\u001f\u007f\s]/.test(s) || s.includes("#")) return null;
+  let u: URL;
+  try {
+    u = new URL(s);
+  } catch {
+    return null;
+  }
+  if (u.username || u.password) return null;
+  const scheme = u.protocol.slice(0, -1).toLowerCase();
+  if (scheme === "http" || scheme === "https") return u.origin === new URL(webOrigin).origin ? u.toString() : null;
+  if (scheme === "javascript" || scheme === "data" || scheme === "file" || scheme === "blob") return null;
+  return schemes.includes(scheme) ? s : null;
+}

@@ -113,11 +113,12 @@ export interface CoursePatch {
   accessMode?: "FREE" | "PAID" | "SUBSCRIPTION_ONLY";
   includedInSubscription?: boolean;
   certificateEnabled?: boolean;
+  allowDownloads?: boolean;
   featured?: boolean;
 }
 
 /** Fields only the owner (or an admin) may change; `featured` is catalog curation, admins only. */
-const SETTINGS_FIELDS = ["slug", "accessMode", "includedInSubscription", "certificateEnabled"] as const;
+const SETTINGS_FIELDS = ["slug", "accessMode", "includedInSubscription", "certificateEnabled", "allowDownloads"] as const;
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -145,6 +146,7 @@ export async function updateCourse(actor: Actor, id: string, patch: CoursePatch,
       put("level", "level", patch.level, current.level);
       put("language", "language", patch.language, current.language);
       put("certificateEnabled", "certificate_enabled", patch.certificateEnabled, current.certificate_enabled);
+      put("allowDownloads", "allow_downloads", patch.allowDownloads, current.allow_downloads);
       put("featured", "featured", patch.featured, current.featured);
 
       if (patch.coverUploadId !== undefined && patch.coverUploadId !== current.cover_upload_id) {

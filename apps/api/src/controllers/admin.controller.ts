@@ -90,6 +90,10 @@ export const settingsPatch = z
         reviewMinProgressPercent: percent,
         subscriptionGraceDays: z.number().int().min(0).max(30),
         orderTtlMinutes: z.number().int().min(5).max(1440),
+        offline: z
+          .object({ enabled: z.boolean(), days: z.number().int().min(1).max(365), maxPerUser: z.number().int().min(1).max(500) })
+          .partial()
+          .strict(),
       })
       .partial()
       .strict(),
@@ -99,6 +103,17 @@ export const settingsPatch = z
       .strict(),
     analytics: z
       .object({ timezone: z.string().refine(isTimeZone, "must be an IANA time zone, for example Europe/Berlin") })
+      .partial()
+      .strict(),
+    mobile: z
+      .object({
+        iosWebPurchaseLink: z.boolean(),
+        minSupportedVersion: z
+          .string()
+          .trim()
+          .regex(/^\d{1,4}\.\d{1,4}\.\d{1,4}$/, "must be a version like 1.4.0")
+          .nullable(),
+      })
       .partial()
       .strict(),
   })

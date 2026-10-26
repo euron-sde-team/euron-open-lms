@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Users } from "lucide-react";
 import { isApiError } from "@open-lms/api-client";
 import { Badge, Button, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Field, Input, Skeleton, Textarea, cn, toast } from "@open-lms/ui";
-import type { AdminCourseRow, AdminEnrollment, AdminLearnerDetail, AdminUserRow, UserStatus } from "@open-lms/types";
+import type { AdminCourseRow, AdminDownloadRow, AdminEnrollment, AdminLearnerDetail, AdminUserRow, Page, UserStatus } from "@open-lms/types";
 import { api } from "@/lib/api";
 import { accountActions, endOfDayIso, protectionOf, ROLE_LABEL, shortDate, SOURCE_LABEL, STATUS_LABEL, STATUS_TONE, SUBSCRIPTION_LABEL, toDateInput } from "@/lib/admin-ops";
 import { errorMessage } from "@/lib/errors";
@@ -303,6 +303,8 @@ function LearnerSheet({ id, onClose }: { id: string | null; onClose: () => void 
                 <p className="text-[13.5px] text-muted-foreground">No certificates yet.</p>
               )}
             </DetailSection>
+
+            <DownloadsSection learnerId={d.id} />
           </>
         ) : null}
       </DetailSheet>
@@ -376,6 +378,51 @@ function LearnerSheet({ id, onClose }: { id: string | null; onClose: () => void 
         </>
       ) : null}
     </>
+  );
+}
+
+/** Videos saved in the mobile app; revoking one makes the app delete it at its next check. */
+function DownloadsSection({ learnerId }: { learnerId: string }) {
+  const qc = useQueryClient();
+  const key = qk.admin.detail("learner-downloads", learnerId);
+  const q = useQuery({ queryKey: key, queryFn: () => api().admin.learnerDownloads(learnerId, { limit: 50 }) });
+  const revoke = useMutation({
+    mutationFn: (id: string) => api().admin.revokeDownload(id),
+    onSuccess: (row) => {
+      qc.setQueryData<Page<AdminDownloadRow>>(key, (old) => (old ? { ...old, items: old.items.map((x) => (x.id === row.id ? row : x)) } : old));
+      toast.success({ title: "Download revoked" });
+    },
+    onError: (e) => toast.error({ title: errorMessage(e) }),
+  });
+  const rows = q.data?.items ?? [];
+  return (
+    <DetailSection title="Offline downloads">
+      {q.isPending ? (
+        <Skeleton className="h-10" />
+      ) : rows.length ? (
+        <ul className="divide-y divide-border" data-testid="learner-downloads">
+          {rows.map((r) => (
+            <li key={r.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 text-[13.5px]">
+              <div className="min-w-0">
+                <p className="truncate font-medium">{r.item.title}</p>
+                <p className="truncate text-[12.5px] text-muted-foreground">
+                  {r.course.title} · device {r.deviceId.slice(0, 8)} · {r.revokedAt ? `revoked ${shortDate(r.revokedAt)}` : `plays offline until ${shortDate(r.expiresAt)}`}
+                </p>
+              </div>
+              {r.active ? (
+                <Button size="sm" variant="outline" loading={revoke.isPending && revoke.variables === r.id} onClick={() => revoke.mutate(r.id)} data-testid="download-revoke">
+                  Revoke
+                </Button>
+              ) : (
+                <Badge tone={r.revokedAt ? "danger" : "neutral"}>{r.revokedAt ? "Revoked" : "Expired"}</Badge>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[13.5px] text-muted-foreground">No videos saved in the mobile app.</p>
+      )}
+    </DetailSection>
   );
 }
 

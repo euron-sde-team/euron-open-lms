@@ -236,3 +236,16 @@ variable "api_extra_secrets" {
   type        = list(object({ name = string, valueFrom = string }))
   default     = []
 }
+
+variable "push_provider" {
+  description = "Push notifications to the mobile app: none (default) or fcm. fcm creates <name_prefix>/push for FCM_SERVICE_ACCOUNT_JSON."
+  type        = string
+  default     = "none"
+}
+
+variable "fcm_service_account_json" {
+  description = "Optional FCM_SERVICE_ACCOUNT_JSON (stored in state). Prefer null and putting it in by hand."
+  type        = string
+  default     = null
+  sensitive   = true
+}

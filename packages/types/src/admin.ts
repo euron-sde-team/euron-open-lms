@@ -66,6 +66,8 @@ export interface AdminCourse {
   accessMode: AccessMode;
   includedInSubscription: boolean;
   certificateEnabled: boolean;
+  /** Videos may be saved for offline viewing in the mobile app. */
+  allowDownloads: boolean;
   featured: boolean;
   categoryIds: string[];
   prices: AdminPrice[];
@@ -256,6 +258,19 @@ export interface AdminLearnerDetail extends AdminUserRow {
   certificates: { serial: string; courseTitle: string; issuedAt: string; revoked: boolean }[];
 }
 
+/** GET /api/admin/learners/:id/downloads: one saved video on one of the learner's devices. */
+export interface AdminDownloadRow {
+  id: string;
+  item: { id: string; title: string };
+  course: { id: string; slug: string; title: string };
+  deviceId: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  /** Not revoked and not past its offline window. */
+  active: boolean;
+}
+
 // ─── Commerce ───────────────────────────────────────────────────────────────
 
 export interface AdminOrderRow {
@@ -430,9 +445,16 @@ export interface LmsSettings {
     subscriptionGraceDays: number;
     /** Minutes a PENDING order stays payable. */
     orderTtlMinutes: number;
+    /**
+     * Offline downloads in the mobile app: a saved video keeps playing for `days` after
+     * the last online check; at most `maxPerUser` active downloads per learner.
+     */
+    offline: { enabled: boolean; days: number; maxPerUser: number };
   };
   certificates: { signatoryName: string; signatoryTitle: string; footer: string };
   analytics: { timezone: string };
+  /** The mobile app: whether iOS links out to web checkout, and the oldest app version still allowed. */
+  mobile: { iosWebPurchaseLink: boolean; minSupportedVersion: string | null };
 }
 
 export interface IntegrationStatus {

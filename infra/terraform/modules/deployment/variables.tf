@@ -483,3 +483,21 @@ variable "alarm_email" {
   type        = string
   default     = null
 }
+
+variable "push_provider" {
+  description = "PUSH_PROVIDER for the mobile app's push notifications: none or fcm. fcm creates <name_prefix>/push (FCM_SERVICE_ACCOUNT_JSON, \"set-me\" until replaced)."
+  type        = string
+  default     = "none"
+
+  validation {
+    condition     = contains(["none", "fcm"], var.push_provider)
+    error_message = "push_provider must be none or fcm."
+  }
+}
+
+variable "fcm_service_account_json" {
+  description = "Optional FCM_SERVICE_ACCOUNT_JSON. Stored in Secrets Manager (and in state). Null: \"set-me\", replaced by hand."
+  type        = string
+  default     = null
+  sensitive   = true
+}

@@ -23,6 +23,10 @@
 #   <prefix>/evs      EVS_PLAYBACK_KEY, EVS_READ_KEY, EVS_WEBHOOK_SECRET for
 #                     euron-video-system: only when create_evs_secret is true (an EVS
 #                     base URL is configured). Same placeholder rule.
+#   <prefix>/push     FCM_SERVICE_ACCOUNT_JSON: the Google service account key the API
+#                     signs FCM HTTP v1 requests with (push notifications to the mobile
+#                     app): only when create_push_secret is true (push_provider = "fcm").
+#                     Same placeholder rule.
 #
 # Every third-party value follows the openai pattern: pass it as a sensitive variable
 # (it then lands in Terraform state), or leave it null and replace "set-me" by hand
@@ -142,6 +146,25 @@ resource "aws_secretsmanager_secret_version" "evs" {
   }
 }
 
+resource "aws_secretsmanager_secret" "push" {
+  #checkov:skip=CKV2_AWS_57:A Google service account key; it is rotated in the Google Cloud console, then put here by hand.
+  count                   = var.create_push_secret ? 1 : 0
+  name                    = "${var.name_prefix}/push"
+  description             = "Firebase Cloud Messaging service account for mobile push (FCM_SERVICE_ACCOUNT_JSON)"
+  kms_key_id              = var.kms_key_arn
+  recovery_window_in_days = var.recovery_window_in_days
+}
+
+resource "aws_secretsmanager_secret_version" "push" {
+  count         = var.create_push_secret ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.push[0].id
+  secret_string = jsonencode({ FCM_SERVICE_ACCOUNT_JSON = coalesce(var.fcm_service_account_json, "set-me") })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 locals {
   create_payments = var.enable_stripe || var.enable_razorpay
   payment_keys = concat(
@@ -157,5 +180,6 @@ locals {
     [for s in aws_secretsmanager_secret.openai : { name = "OPENAI_API_KEY", valueFrom = "${s.arn}:OPENAI_API_KEY::" }],
     flatten([for s in aws_secretsmanager_secret.payments : [for k in local.payment_keys : { name = k, valueFrom = "${s.arn}:${k}::" }]]),
     flatten([for s in aws_secretsmanager_secret.evs : [for k in local.evs_keys : { name = k, valueFrom = "${s.arn}:${k}::" }]]),
+    [for s in aws_secretsmanager_secret.push : { name = "FCM_SERVICE_ACCOUNT_JSON", valueFrom = "${s.arn}:FCM_SERVICE_ACCOUNT_JSON::" }],
   )
 }

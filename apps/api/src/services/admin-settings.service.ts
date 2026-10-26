@@ -5,8 +5,8 @@
  * upload, saves through settings.service.ts saveSettings and audits `settings.update`
  * with the changed top-level keys and their before and after values, in one transaction.
  *
- * Patches merge group by group (settings.service.ts mergeSettings): a group's omitted
- * fields keep their values, while lists (`currencies.enabled`, `tax.rules`) and the
+ * Patches merge group by group (settings.service.ts mergeSettings, `learning.offline` one
+ * level deeper): a group's omitted fields keep their values, while lists (`currencies.enabled`, `tax.rules`) and the
  * `gateways.routing` map are replaced as a whole.
  */
 import type { LmsSettings } from "@open-lms/types";
@@ -17,7 +17,10 @@ import { audit } from "./audit.service";
 import { claimSingle } from "./media-attach.service";
 import { clearSettingsCache, getSettings, mergeSettings, saveSettings } from "./settings.service";
 
-export type SettingsPatch = { [K in keyof LmsSettings]?: LmsSettings[K] extends Record<string, unknown> ? Partial<LmsSettings[K]> : LmsSettings[K] };
+type Learning = LmsSettings["learning"];
+export type SettingsPatch = { [K in Exclude<keyof LmsSettings, "learning">]?: LmsSettings[K] extends Record<string, unknown> ? Partial<LmsSettings[K]> : LmsSettings[K] } & {
+  learning?: Partial<Omit<Learning, "offline">> & { offline?: Partial<Learning["offline"]> };
+};
 
 /** An IANA time zone the runtime knows ("Asia/Kolkata", "UTC"). */
 export function isTimeZone(tz: string): boolean {

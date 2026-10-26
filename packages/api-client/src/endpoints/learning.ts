@@ -1,5 +1,5 @@
 /** Learning endpoints: the classroom, playback, progress, notes, My Learning and certificates. See docs/api/rest-contract.md. */
-import type { Certificate, Classroom, ItemContent, ItemKind, LearningEntry, LearningSummary, Note, Page, Playback, ProgressBeat, ProgressResult, CourseCard } from "@open-lms/types";
+import type { Certificate, Classroom, ItemContent, ItemKind, LearningEntry, LearningSummary, Note, OfflineDownload, OfflineValidation, Page, Playback, ProgressBeat, ProgressResult, CourseCard } from "@open-lms/types";
 import { enc, type Helpers, type PageQuery } from "./helpers";
 
 export interface BookmarkEntry {
@@ -16,6 +16,8 @@ export function learningEndpoints(h: Helpers) {
     item: (itemId: string) => get<ItemContent>(`/learn/items/${enc(itemId)}`),
     /** Mint a playback session (EVS) or get the URL/embed. 409 VIDEO_NOT_READY. */
     playback: (itemId: string) => post<Playback>(`/learn/items/${enc(itemId)}/playback`, {}),
+    /** A licence to keep this video on this device (mobile app). 409 OFFLINE_DISABLED, DOWNLOADS_NOT_ALLOWED, DOWNLOAD_LIMIT_REACHED... */
+    download: (itemId: string, deviceId: string) => post<OfflineDownload>(`/learn/items/${enc(itemId)}/downloads`, { deviceId }),
     /** `keepalive` for the final beat when the tab hides or the player unmounts (sendBeacon cannot carry the bearer token). */
     progress: (itemId: string, beat: ProgressBeat, opts?: { keepalive?: boolean }) =>
       h.http.request<ProgressResult>("POST", `/learn/items/${enc(itemId)}/progress`, { body: beat, keepalive: opts?.keepalive }),
@@ -35,6 +37,9 @@ export function learningEndpoints(h: Helpers) {
     saved: (q?: PageQuery) => get<Page<CourseCard>>("/my/saved", pq(q)),
     bookmarks: (q?: PageQuery) => get<Page<BookmarkEntry>>("/my/bookmarks", pq(q)),
     certificates: () => get<Certificate[]>("/my/certificates"),
+    /** Which saved videos may keep playing; delete the `revoked` copies. */
+    validateDownloads: (deviceId: string, itemIds: string[]) => post<OfflineValidation>("/my/downloads/validate", { deviceId, itemIds }),
+    removeDownload: (itemId: string, deviceId: string) => del(`/my/downloads/${enc(itemId)}`, { deviceId }),
   };
 
   const certificates = {

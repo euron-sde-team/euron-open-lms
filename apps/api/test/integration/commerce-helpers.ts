@@ -17,7 +17,7 @@ export async function configureCommerce(over: Partial<LmsSettings> = {}): Promis
       gateways: { routing: { INR: "RAZORPAY", USD: "STRIPE" }, fallback: "STRIPE" },
       tax: { enabled: false, mode: "EXCLUSIVE", rules: [] },
       seller: { legalName: "Example Academy Ltd", address: "1 Example Street, Example City", taxId: "EX-123", email: "billing@example.test" },
-      learning: { videoCompletePercent: 90, reviewMinProgressPercent: 20, subscriptionGraceDays: 3, orderTtlMinutes: 60 },
+      learning: { videoCompletePercent: 90, reviewMinProgressPercent: 20, subscriptionGraceDays: 3, orderTtlMinutes: 60, offline: { enabled: true, days: 30, maxPerUser: 25 } },
       ...over,
     },
     null,

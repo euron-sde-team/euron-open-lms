@@ -298,3 +298,101 @@ describe("learning: catalog", () => {
     await anon().get("/api/catalog/instructors/nobody-here-at-all").expect(404);
   });
 });
+
+/**
+ * Rating and length over the stored totals, six published courses under their own word:
+ *   a  4.5 (9/2)      3600 s   short   BEGINNER
+ *   b  4.46 (223/50)  7200 s   medium  BEGINNER   (shows as 4.5, is below it)
+ *   c  4.0 (4/1)      21600 s  medium  ADVANCED
+ *   d  3.0 (3/1)      21601 s  long    BEGINNER
+ *   e  unrated        7199 s   short   ADVANCED
+ *   f  2.5 (5/2)      30000 s  long    BEGINNER
+ * Enrollment counts give `popular` a fixed order: a, b, c, d, e, f. Lists sort by it unless a
+ * test picks another sort.
+ */
+describe("learning: catalog rating and length filters", () => {
+  const word = token();
+  const courses: Record<"a" | "b" | "c" | "d" | "e" | "f", TestCourse> = {} as never;
+
+  beforeAll(async () => {
+    const rows = {
+      a: { rating_sum: 9, rating_count: 2, duration_seconds: 3600, level: "BEGINNER" },
+      b: { rating_sum: 223, rating_count: 50, duration_seconds: 7200, level: "BEGINNER" },
+      c: { rating_sum: 4, rating_count: 1, duration_seconds: 21600, level: "ADVANCED" },
+      d: { rating_sum: 3, rating_count: 1, duration_seconds: 21601, level: "BEGINNER" },
+      e: { rating_sum: 0, rating_count: 0, duration_seconds: 7199, level: "ADVANCED" },
+      f: { rating_sum: 5, rating_count: 2, duration_seconds: 30000, level: "BEGINNER" },
+    } as const;
+    let popularity = 60;
+    for (const [key, row] of Object.entries(rows) as [keyof typeof rows, (typeof rows)[keyof typeof rows]][]) {
+      courses[key] = await createCourse();
+      await updateCourse(courses[key].id, { ...row, title: `${word} course ${key}`, enrollment_count: popularity });
+      popularity -= 10;
+    }
+  });
+
+  // Most popular unless the query picks a sort (a search would default to best match, where these titles tie).
+  const list = async (query: string) => (await anon().get(`/api/catalog/courses?q=${word}${query}${query.includes("sort=") ? "" : "&sort=popular"}`).expect(200)).body as Page<CourseCard>;
+  const keys = (p: Page<CourseCard>) => p.items.map((c) => Object.entries(courses).find(([, v]) => v.id === c.id)?.[0]);
+  const walk = async (query: string) => {
+    const seen: (string | undefined)[] = [];
+    let cursor: string | null = null;
+    do {
+      const page = await list(`${query}&limit=1${cursor ? `&cursor=${cursor}` : ""}`);
+      expect(page.items.length).toBeLessThanOrEqual(1);
+      seen.push(...keys(page));
+      cursor = page.nextCursor;
+    } while (cursor);
+    return seen;
+  };
+
+  test("minRating keeps rated courses with an exact average at least that", async () => {
+    expect(keys(await list("&minRating=4.5"))).toEqual(["a"]);
+    expect(keys(await list("&minRating=4"))).toEqual(["a", "b", "c"]);
+    expect(keys(await list("&minRating=3.5"))).toEqual(["a", "b", "c"]);
+    expect(keys(await list("&minRating=3"))).toEqual(["a", "b", "c", "d"]);
+  });
+
+  test("length buckets the total duration at 2 and 6 hours", async () => {
+    expect(keys(await list("&length=short"))).toEqual(["a", "e"]);
+    expect(keys(await list("&length=medium"))).toEqual(["b", "c"]);
+    expect(keys(await list("&length=long"))).toEqual(["d", "f"]);
+  });
+
+  test("both compose with each other and with the other filters", async () => {
+    expect(keys(await list("&minRating=4&level=BEGINNER"))).toEqual(["a", "b"]);
+    expect(keys(await list("&length=long&level=BEGINNER"))).toEqual(["d", "f"]);
+    expect(keys(await list("&length=short&level=ADVANCED"))).toEqual(["e"]);
+    expect(keys(await list("&minRating=3&length=long"))).toEqual(["d"]);
+    expect(keys(await list("&minRating=4.5&length=medium"))).toEqual([]);
+  });
+
+  test("keyset pagination walks the filtered results without gaps or repeats", async () => {
+    expect(await walk("&minRating=3")).toEqual(["a", "b", "c", "d"]);
+    expect(await walk("&minRating=3&sort=rating")).toEqual(["a", "b", "c", "d"]);
+    expect(await walk("&length=long&sort=newest")).toHaveLength(2);
+    expect(await walk("&minRating=4&length=medium")).toEqual(["b", "c"]);
+    expect(await walk("&length=short&level=ADVANCED")).toEqual(["e"]);
+  });
+
+  test("facets count rating and length, each ignoring its own filter", async () => {
+    const all = (await anon().get(`/api/catalog/facets?q=${word}`).expect(200)).body as CatalogFacets;
+    expect(all.rating).toEqual({ "3": 4, "3.5": 3, "4": 3, "4.5": 1 });
+    expect(all.length).toEqual({ short: 2, medium: 2, long: 2 });
+    const rated = (await anon().get(`/api/catalog/facets?q=${word}&minRating=4`).expect(200)).body as CatalogFacets;
+    expect(rated.rating).toEqual(all.rating);
+    expect(rated.length).toEqual({ short: 1, medium: 2, long: 0 });
+    expect(rated.levels).toEqual({ BEGINNER: 2, INTERMEDIATE: 0, ADVANCED: 1, ALL_LEVELS: 0 });
+    const long = (await anon().get(`/api/catalog/facets?q=${word}&length=long`).expect(200)).body as CatalogFacets;
+    expect(long.length).toEqual(all.length);
+    expect(long.rating).toEqual({ "3": 1, "3.5": 0, "4": 0, "4.5": 0 });
+    expect(long.price.paid).toBe(2);
+  });
+
+  test("anything else is a 400", async () => {
+    for (const bad of ["minRating=5", "minRating=2", "minRating=four", "minRating=", "length=huge", "length=SHORT"]) {
+      await anon().get(`/api/catalog/courses?${bad}`).expect(400);
+      await anon().get(`/api/catalog/facets?${bad}`).expect(400);
+    }
+  });
+});

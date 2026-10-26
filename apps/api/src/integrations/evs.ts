@@ -5,6 +5,8 @@
  *   mintPlayback   POST /v1/videos/{id}/playback-sessions   key scope playback:mint
  *                  Called only after the LMS's own entitlement check
  *                  (services/access.service.ts), with the learner's id as viewerId.
+ *                  Offline downloads ask for the longest session EVS grants
+ *                  (`ttlSeconds`, EVS caps it at one hour) to fetch the video in.
  *   listVideos     GET  /v1/videos                          key scope videos:read
  *                  The admin video picker; optional.
  *   verifyWebhook  EVS-Signature: t=<unix>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>
@@ -57,11 +59,14 @@ async function call(path: string, key: string, init: RequestInit = {}): Promise<
   return res;
 }
 
-export async function mintPlayback(videoId: string, viewerId: string, origin: string): Promise<EvsSession> {
+/** The longest playback session EVS mints. */
+export const EVS_MAX_TTL_SECONDS = 3600;
+
+export async function mintPlayback(videoId: string, viewerId: string, origin: string, opts: { ttlSeconds?: number } = {}): Promise<EvsSession> {
   if (!evsEnabled()) throw new HttpError(503, "Video playback is not configured on this server", "VIDEO_NOT_CONFIGURED");
   const res = await call(`/v1/videos/${encodeURIComponent(videoId)}/playback-sessions`, config.EVS_PLAYBACK_KEY as string, {
     method: "POST",
-    body: JSON.stringify({ viewerId, origin }),
+    body: JSON.stringify({ viewerId, origin, ...(opts.ttlSeconds ? { ttlSeconds: Math.min(EVS_MAX_TTL_SECONDS, opts.ttlSeconds) } : {}) }),
   });
   if (res.status === 404) throw new HttpError(404, "This video is not available", "VIDEO_NOT_FOUND");
   if (res.status === 422) throw new HttpError(409, "This video is still processing", "VIDEO_NOT_READY");

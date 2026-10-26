@@ -16,19 +16,22 @@
  *   - a ban signs the person out everywhere at once (sessions revoked, token_version
  *     bumped); a suspension leaves them signed in but read-only (core/context.ts
  *     requireActive), and maintenance.lift-suspensions ends it on time;
+ *   - offline download licences (services/offline.service.ts) are listed per learner and
+ *     revoked one by one (`download.revoke`); the app deletes the copy on its next check;
  *   - erase (ADMIN only) runs account.service.ts anonymiseUser in one transaction, and
  *     is refused while the person has a live subscription (cancel it first, so the
  *     gateway stops charging).
  */
-import type { AdminEnrollment, AdminLearnerDetail, AdminUserRow, Page, UserRole, UserStatus } from "@open-lms/types";
+import type { AdminDownloadRow, AdminEnrollment, AdminLearnerDetail, AdminUserRow, Page, UserRole, UserStatus } from "@open-lms/types";
 import { requireArea, type Actor, type RequestMeta } from "../core/context";
 import { withTransaction } from "../core/effects";
 import { badRequest, conflict, forbidden, notFound } from "../core/errors";
 import type { Executor } from "../db/kysely";
-import { adminUserRows, enrollmentById, presentEnrollments, presentOrderRows } from "../presenters/admin-learners.presenter";
+import { adminUserRows, enrollmentById, presentDownload, presentEnrollments, presentOrderRows } from "../presenters/admin-learners.presenter";
 import { liveSubscriptionOf } from "../presenters/subscription.presenter";
 import { adminLearnersRepo } from "../repositories/admin-learners.repository";
 import { decodeTime, timePage } from "../repositories/keyset";
+import { offlineDownloadRepo } from "../repositories/offline-download.repository";
 import { sessionRepo } from "../repositories/session.repository";
 import { userRepo } from "../repositories/user.repository";
 import { findCourse } from "./access.service";
@@ -143,6 +146,28 @@ export async function setValidUntil(actor: Actor, enrollmentId: string, validUnt
     await audit({ actorId: actor.id, action: "enrollment.valid_until", entityType: "enrollment", entityId: enrollmentId, ip: meta.ip, data: { userId: row.user_id, courseId: row.course_id, from: row.valid_until?.toISOString() ?? null, to: until?.toISOString() ?? null } }, trx);
   });
   return (await enrollmentById(enrollmentId)) as AdminEnrollment;
+}
+
+// ─── Offline downloads ──────────────────────────────────────────────────────
+
+/** GET /admin/learners/:id/downloads: the learner's offline licences, newest first. */
+export async function listDownloads(actor: Actor, userId: string, q: { cursor?: string; limit: number }): Promise<Page<AdminDownloadRow>> {
+  requireArea(actor, "learners");
+  if (!(await userRepo.findAuthById(userId))) throw notFound("User not found", "USER_NOT_FOUND");
+  const page = timePage(await offlineDownloadRepo.listForUser(userId, { cursor: decodeTime(q.cursor), limit: q.limit }), q.limit);
+  return { items: page.items.map((r) => presentDownload(r)), nextCursor: page.nextCursor };
+}
+
+/** POST /admin/downloads/:id/revoke: the copy stops playing at the app's next check. */
+export async function revokeDownload(actor: Actor, downloadId: string, meta: RequestMeta): Promise<AdminDownloadRow> {
+  requireArea(actor, "learners");
+  await withTransaction(async (trx) => {
+    const row = await offlineDownloadRepo.byId(downloadId, trx);
+    if (!row) throw notFound("Download not found", "DOWNLOAD_NOT_FOUND");
+    if (!(await offlineDownloadRepo.revokeOne(downloadId, trx))) throw conflict("This download is already revoked", "DOWNLOAD_REVOKED");
+    await audit({ actorId: actor.id, action: "download.revoke", entityType: "offline_download", entityId: downloadId, ip: meta.ip, data: { userId: row.user_id, itemId: row.item_id, courseId: row.course_id, deviceId: row.device_id } }, trx);
+  });
+  return presentDownload((await offlineDownloadRepo.byId(downloadId))!);
 }
 
 // ─── Account actions ────────────────────────────────────────────────────────

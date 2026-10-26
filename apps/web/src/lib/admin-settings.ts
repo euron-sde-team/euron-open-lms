@@ -200,6 +200,37 @@ export const learningSection: SectionDef<LearningForm> = {
   }),
 };
 
+// ─── Offline downloads ──────────────────────────────────────────────────────
+
+export interface OfflineForm {
+  enabled: boolean;
+  days: string;
+  maxPerUser: string;
+}
+export const offlineSection: SectionDef<OfflineForm> = {
+  toForm: (s) => ({ enabled: s.learning.offline.enabled, days: String(s.learning.offline.days), maxPerUser: String(s.learning.offline.maxPerUser) }),
+  validate: (f) => {
+    const e: Errors = {};
+    if (!intIn(f.days, 1, 365)) e.days = "A whole number from 1 to 365.";
+    if (!intIn(f.maxPerUser, 1, 500)) e.maxPerUser = "A whole number from 1 to 500.";
+    return e;
+  },
+  toPatch: (f) => ({ learning: { offline: { enabled: f.enabled, days: Number(f.days), maxPerUser: Number(f.maxPerUser) } } }),
+};
+
+// ─── Mobile app ─────────────────────────────────────────────────────────────
+
+export interface MobileForm {
+  iosWebPurchaseLink: boolean;
+  minSupportedVersion: string;
+}
+const VERSION = /^\d{1,4}\.\d{1,4}\.\d{1,4}$/;
+export const mobileSection: SectionDef<MobileForm> = {
+  toForm: (s) => ({ iosWebPurchaseLink: s.mobile.iosWebPurchaseLink, minSupportedVersion: s.mobile.minSupportedVersion ?? "" }),
+  validate: (f): Errors => (f.minSupportedVersion.trim() && !VERSION.test(f.minSupportedVersion.trim()) ? { minSupportedVersion: "A version like 1.4.0, or leave it empty." } : {}),
+  toPatch: (f) => ({ mobile: { iosWebPurchaseLink: f.iosWebPurchaseLink, minSupportedVersion: f.minSupportedVersion.trim() || null } }),
+};
+
 // ─── Certificates ───────────────────────────────────────────────────────────
 
 export type CertificatesForm = LmsSettings["certificates"];
@@ -243,12 +274,13 @@ export const analyticsSection: SectionDef<AnalyticsForm> = {
   toPatch: (f) => ({ analytics: { timezone: f.timezone.trim() } }),
 };
 
-/** API field errors ("tax.rules.0.label") to this section's form keys. */
+/** API field errors ("tax.rules.0.label") to this section's form keys; the longest matching group ("learning.offline") is stripped. */
 export function mapFieldErrors(fieldErrors: Record<string, string>, groups: string[]): Errors {
   const out: Errors = {};
+  const prefixes = [...groups].sort((a, b) => b.length - a.length);
   for (const [path, msg] of Object.entries(fieldErrors)) {
-    const parts = path.split(".");
-    const key = groups.includes(parts[0]!) && parts.length > 1 ? parts.slice(1).join(".") : path;
+    const group = prefixes.find((g) => path.startsWith(`${g}.`));
+    const key = group ? path.slice(group.length + 1) : path;
     out[key] = msg.charAt(0).toUpperCase() + msg.slice(1);
   }
   return out;

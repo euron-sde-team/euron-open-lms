@@ -7,12 +7,16 @@ import { rateLimit } from "../middleware/rate-limit";
 export const router = Router();
 
 /**
- * Search and browse: `?q=&category=&level=&language=&price=free|paid|subscription&sort=relevance|popular|newest|rating|
- * price_asc|price_desc&currency=&cursor=&limit=`. Returns `Page<CourseCard>` (prices in the display currency; `viewer`
- * when signed in). 400 INVALID_CURSOR.
+ * Search and browse: `?q=&category=&level=&language=&price=free|paid|subscription&minRating=3|3.5|4|4.5&length=short|
+ * medium|long&sort=relevance|popular|newest|rating|price_asc|price_desc&currency=&cursor=&limit=`. `minRating` keeps rated
+ * courses whose average is at least that; `length` buckets the total duration (short under 2 hours, medium 2 to 6 hours,
+ * long over 6 hours). Returns `Page<CourseCard>` (prices in the display currency; `viewer` when signed in). 400 INVALID_CURSOR.
  */
 router.get("/courses", optionalAuth, ctrl.listCourses);
-/** Counts per category, level, language and price for the same filters (`CatalogFacets`); each facet ignores its own filter. */
+/**
+ * Counts per category, level, language, price, minimum rating and length for the same filters (`CatalogFacets`); each facet
+ * ignores its own filter. The rating counts overlap (a 4.6 course counts under 3, 3.5, 4 and 4.5).
+ */
 router.get("/facets", ctrl.facets);
 /** Home page shelves: `{ featured, popular, newest, free }`, each a short `CourseCard[]`. `?currency=`. */
 router.get("/featured", optionalAuth, ctrl.featured);

@@ -93,6 +93,12 @@ x-api-env: &api-env
   EVS_PLAYBACK_KEY: ${EVS_PLAYBACK_KEY:-${LMS_EVS_PLAYBACK_KEY:?run `make env` first}}
   EVS_READ_KEY: ${EVS_READ_KEY:-${LMS_EVS_PLAYBACK_KEY:?run `make env` first}}
   EVS_WEBHOOK_SECRET: ${EVS_WEBHOOK_SECRET:-${LMS_EVS_WEBHOOK_SECRET:?run `make env` first}}
+  # Push notifications to the mobile app, against the stub's fake FCM (GET
+  # http://localhost:5119/fcm/messages lists what was sent). PUSH_PROVIDER=fcm plus
+  # FCM_SERVICE_ACCOUNT_JSON in .env sends real pushes.
+  PUSH_PROVIDER: ${PUSH_PROVIDER:-stub}
+  PUSH_STUB_URL: ${PUSH_STUB_URL:-http://stubs:5119}
+  FCM_SERVICE_ACCOUNT_JSON: ${FCM_SERVICE_ACCOUNT_JSON:-}
 
 # api, worker and migrate are one image with three commands. Each carries the same build
 # so any of them can be started alone; BuildKit builds it once and reuses the cache.

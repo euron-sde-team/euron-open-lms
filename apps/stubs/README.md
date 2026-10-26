@@ -1,7 +1,7 @@
 # @open-lms/stubs
 
 Local stand-ins for every third party the LMS talks to: Stripe, Razorpay, an
-OpenAI-compatible model and the video service (EVS). One dependency-free Node script
+OpenAI-compatible model, the video service (EVS) and Firebase Cloud Messaging (FCM). One dependency-free Node script
 (`node:http`, `node:crypto`), state in memory, port 5119.
 
 The API runs its real client code against it; only the base URLs differ from production.
@@ -20,6 +20,7 @@ RAZORPAY_KEY_ID=rzp_test_stub RAZORPAY_KEY_SECRET=rzp_stub_secret RAZORPAY_WEBHO
 RAZORPAY_API_BASE=http://localhost:5119 RAZORPAY_CHECKOUT_SCRIPT_URL=http://localhost:5119/stub/razorpay/checkout.js
 AI_PROVIDER=stub AI_STUB_URL=http://localhost:5119
 EVS_BASE_URL=http://localhost:5119 EVS_PLAYBACK_KEY=evs_local EVS_WEBHOOK_SECRET=evs_stub_webhook_secret
+PUSH_PROVIDER=stub PUSH_STUB_URL=http://localhost:5119
 ```
 
 ## Configuration
@@ -100,6 +101,9 @@ delivered before the response; `async`; `none`: no webhooks), in the JSON body o
 | GET | `/stub/razorpay/checkout.js` | defines `window.Razorpay(options)` with `open()`, `on("payment.failed", fn)`, `close()`; the overlay's Pay calls `/stub/razorpay/pay` and then `options.handler(payload)`; Fail calls `/stub/razorpay/fail` and the `payment.failed` listeners (else `options.modal.ondismiss`) |
 | POST | `/stub/razorpay/pay` | `{ order_id }`: captures, sends `payment.captured` + `order.paid`. `{ subscription_id }`: activates, sends `subscription.activated` + `subscription.charged` (or `subscription.authenticated` for a trial). Returns the handler payload with a real signature |
 | POST | `/stub/razorpay/fail` | sends `payment.failed`; returns Checkout.js's failure payload |
+| GET | `/stub/razorpay/checkout-page?key=&order_id=` (or `subscription_id=`) `&amount=&currency=&name=&description=&redirect=` | the modal as a full page, for native apps that open it in a browser tab (`checkoutPageUrl` in the API's stub-mode handoff) |
+| POST | `/stub/razorpay/checkout-page/pay` | the page's Pay (form fields `order_id` or `subscription_id`, `redirect`): settles like `/stub/razorpay/pay`, then 303 to `openlms://checkout/razorpay` (or `redirect`) with `razorpay_payment_id`, `razorpay_order_id` or `razorpay_subscription_id`, and `razorpay_signature` as query parameters. JSON `{ redirect }` with `Accept: application/json` |
+| POST | `/stub/razorpay/checkout-page/fail`, `/stub/razorpay/checkout-page/cancel` | `payment.failed` and 303 with `error=payment_failed&payment_id=`, or 303 with `canceled=1` and no event |
 | POST | `/stub/razorpay/subscriptions/:id/renew` | next period, `subscription.charged`; `{ amount }` overrides |
 | POST | `/stub/razorpay/subscriptions/:id/fail` | `pending`, `subscription.pending` |
 | POST | `/stub/razorpay/subscriptions/:id/end` | `cancelled`, `subscription.cancelled` |
@@ -114,10 +118,19 @@ delivered before the response; `async`; `none`: no webhooks), in the JSON body o
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| POST | `/v1/videos/:id/playback-sessions` | 201 `{ sessionId, expiresAt, manifestUrl, thumbnailsUrl, posterUrl, watermark }`; ids starting `missing` are 404, `processing...` and `vid_processing` 422 |
+| POST | `/v1/videos/:id/playback-sessions` | 201 `{ sessionId, expiresAt, manifestUrl, thumbnailsUrl, posterUrl, watermark }`; `ttlSeconds` (60 to 3600, default 3600) sets `expiresAt`; ids starting `missing` are 404, `processing...` and `vid_processing` 422 |
 | GET | `/v1/videos?q=&page=&limit=` | `{ data, pagination }` over three fixed videos |
 | GET | `/stub/evs/play/:id/master.m3u8?token=` | a one-rendition HLS master, then `media.m3u8` and three 2-second MPEG-TS segments (`assets/hls`, stored as `.bin`); a bad or expired token is 403 |
 | POST | `/stub/evs/videos/:id/ready`, `/stub/evs/videos/:id/failed` | sends a signed `video.ready` (`{ durationSeconds }`) or `video.failed` (`{ error }`) |
+
+### FCM (HTTP v1)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| POST | `/fcm/token` | form `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=<JWT>`; the JWT's shape and `scope` are checked (not its signature). `{ access_token, expires_in, token_type }` |
+| POST | `/v1/projects/:project/messages:send` | Bearer a token from `/fcm/token`; `{ message: { token, notification, data, android, apns } }`. `{ name }` and the message is recorded. Device tokens starting `dead` answer 404 `UNREGISTERED`, `bad` 400 `INVALID_ARGUMENT` |
+| GET | `/fcm/messages?token=` | `{ messages: [{ name, project, message, at }] }`, oldest first, optionally for one device token |
+| POST | `/fcm/reset` (or DELETE `/fcm/messages`) | forget the recorded messages |
 
 ### Health
 

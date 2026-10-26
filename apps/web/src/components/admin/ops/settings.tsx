@@ -8,7 +8,7 @@ import { Button, Checkbox, Field, IconButton, Input, Select, Skeleton, Switch, T
 import type { IntegrationStatus, LmsSettings } from "@open-lms/types";
 import { api } from "@/lib/api";
 import {
-  academySection, analyticsSection, certificatesSection, changeCount, CURRENCY_CHOICES, currencySection, isDirty, learningSection, mapFieldErrors, sellerSection, taxSection, timeZones, toggleCurrency,
+  academySection, analyticsSection, certificatesSection, changeCount, CURRENCY_CHOICES, currencySection, isDirty, learningSection, mapFieldErrors, mobileSection, offlineSection, sellerSection, taxSection, timeZones, toggleCurrency,
   type Errors, type Gateway, type SectionDef,
 } from "@/lib/admin-settings";
 import { errorMessage } from "@/lib/errors";
@@ -58,8 +58,10 @@ function SettingsInner() {
           <TaxSection base={q.data} />
           <SellerSection base={q.data} />
           <LearningSection base={q.data} />
+          <OfflineSection base={q.data} />
           <CertificatesSection base={q.data} />
           <AnalyticsSection base={q.data} />
+          <MobileSection base={q.data} />
           <Integrations />
         </div>
       )}
@@ -73,8 +75,10 @@ const SECTIONS = [
   ["tax", "Tax"],
   ["seller", "Seller details"],
   ["learning", "Learning"],
+  ["offline", "Offline downloads"],
   ["certificates", "Certificates"],
   ["analytics", "Analytics"],
+  ["mobile", "Mobile app"],
   ["integrations", "Integrations"],
 ] as const;
 
@@ -441,6 +445,52 @@ function LearningSection({ base }: { base: LmsSettings }) {
         <NumberField id="set-grace" label="Grace after a failed renewal" unit="days" hint="Courses stay open while the card is retried. 0 to 30." value={s.form.subscriptionGraceDays} onChange={(v) => s.set({ subscriptionGraceDays: v })} error={err(s.errors, "subscriptionGraceDays")} testId="settings-grace" />
         <NumberField id="set-ttl" label="Unpaid orders expire after" unit="minutes" hint="From 5 to 1440." value={s.form.orderTtlMinutes} onChange={(v) => s.set({ orderTtlMinutes: v })} error={err(s.errors, "orderTtlMinutes")} testId="settings-order-ttl" />
       </div>
+    </SettingsSection>
+  );
+}
+
+function SwitchRow({ id, label, hint, checked, onChange, testId }: { id: string; label: string; hint: string; checked: boolean; onChange: (v: boolean) => void; testId: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <label htmlFor={id} className="text-sm font-medium">
+          {label}
+        </label>
+        <p className="text-[13px] text-muted-foreground">{hint}</p>
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} data-testid={testId} />
+    </div>
+  );
+}
+
+function OfflineSection({ base }: { base: LmsSettings }) {
+  const s = useSection(offlineSection, base, ["learning.offline", "learning"]);
+  return (
+    <SettingsSection id="offline" title="Offline downloads" description="Whether learners can save videos in the mobile app, and for how long a saved video plays without going online." s={s}>
+      <SwitchRow id="set-offline" label="Allow offline downloads" hint="Each course can still switch downloads off. YouTube videos never download." checked={s.form.enabled} onChange={(v) => s.set({ enabled: v })} testId="settings-offline-enabled" />
+      <div className="grid gap-5 sm:grid-cols-2">
+        <NumberField id="set-offline-days" label="A saved video plays for" unit="days offline" hint="Counted from the last time the app checked in. 1 to 365." value={s.form.days} onChange={(v) => s.set({ days: v })} error={err(s.errors, "days")} testId="settings-offline-days" />
+        <NumberField id="set-offline-max" label="Downloads per learner" unit="videos" hint="Across all their devices. 1 to 500." value={s.form.maxPerUser} onChange={(v) => s.set({ maxPerUser: v })} error={err(s.errors, "maxPerUser")} testId="settings-offline-max" />
+      </div>
+    </SettingsSection>
+  );
+}
+
+function MobileSection({ base }: { base: LmsSettings }) {
+  const s = useSection(mobileSection, base, ["mobile"]);
+  return (
+    <SettingsSection id="mobile" title="Mobile app" description="How the iOS and Android apps behave for this academy." s={s}>
+      <SwitchRow
+        id="set-ios-web"
+        label="Link to web checkout on iOS"
+        hint="Only where the App Store allows it. When off, the iOS app hides prices and purchases; learners buy on the website."
+        checked={s.form.iosWebPurchaseLink}
+        onChange={(v) => s.set({ iosWebPurchaseLink: v })}
+        testId="settings-ios-web-purchase"
+      />
+      <Field label="Oldest supported app version" htmlFor="set-min-version" optional error={err(s.errors, "minSupportedVersion")} hint="Older versions ask the learner to update. Leave empty to support every version.">
+        <Input id="set-min-version" value={s.form.minSupportedVersion} onChange={(e) => s.set({ minSupportedVersion: e.target.value })} placeholder="1.0.0" maxLength={14} aria-invalid={inv(s.errors, "minSupportedVersion")} className="sm:w-40" data-testid="settings-min-version" />
+      </Field>
     </SettingsSection>
   );
 }

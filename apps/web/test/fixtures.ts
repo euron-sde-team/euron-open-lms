@@ -14,6 +14,7 @@ export const me: Me = {
   certificateName: null,
   preferredCurrency: null,
   emailPreferences: { LEARNING: true, COMMUNITY: true, BILLING_REMINDERS: true, PRODUCT_UPDATES: true },
+  pushPreferences: { LEARNING: true, COMMUNITY: true, BILLING_REMINDERS: true, PRODUCT_UPDATES: false },
   deletionRequestedAt: null,
   canOpenAdmin: false,
   subscription: null,

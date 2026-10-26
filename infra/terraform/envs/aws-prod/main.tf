@@ -43,6 +43,9 @@ module "lms" {
   evs_webhook_secret = var.evs_webhook_secret
   video_origins      = var.video_origins
 
+  push_provider            = var.push_provider
+  fcm_service_account_json = var.fcm_service_account_json
+
   az_count                   = 3
   single_nat_gateway         = false
   enable_interface_endpoints = true

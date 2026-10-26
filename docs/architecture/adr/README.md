@@ -25,3 +25,6 @@ and what it costs. The system as built is described in [HLD.md](../HLD.md) and
 | [0017](0017-ai-drafts-never-auto-applied.md) | AI output is a draft a person accepts, never applied by itself |
 | [0018](0018-gap-free-invoice-numbering.md) | Gap-free invoice and credit note numbers in the issuing transaction |
 | [0019](0019-stubs-that-sign-with-real-secrets.md) | Local stand-ins for Stripe, Razorpay, OpenAI and EVS that sign with the real secrets |
+| [0020](0020-native-token-mode.md) | Native token mode: the mobile app keeps the rotating refresh token itself (`X-Client: native`) |
+| [0021](0021-push-through-fcm-http-v1.md) | Push notifications through FCM HTTP v1, signed with node:crypto, after commit |
+| [0022](0022-offline-downloads-inside-a-playback-session.md) | Offline downloads as licences inside a playback session, revalidated online |

@@ -27,7 +27,12 @@ const quoteBody = z
   })
   .strict();
 
-const startBody = quoteBody.extend({ idempotencyKey: z.string().regex(/^[A-Za-z0-9_-]{8,100}$/, "must be 8 to 100 letters, digits, - or _") }).strict();
+const startBody = quoteBody
+  .extend({
+    idempotencyKey: z.string().regex(/^[A-Za-z0-9_-]{8,100}$/, "must be 8 to 100 letters, digits, - or _"),
+    returnUrl: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict();
 
 const confirmBody = z
   .object({

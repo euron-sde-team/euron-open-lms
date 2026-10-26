@@ -66,10 +66,11 @@ by domain and explains the constraints that carry a rule.
 
 | Table | Holds | Constraints worth knowing |
 | --- | --- | --- |
-| `users` | Account, profile fields, role, status, TOTP state, email preferences, `preferred_currency`, `deletion_requested_at`, `token_version` | `email` and `username` unique (citext); `username` pattern; `display_name` 1 to 80, cleaned at write time of emails and phone numbers; `certificate_name` is what certificates print; `totp_secret` is ciphertext; trigram index over name, username and email for the admin search; partial index on staff roles |
+| `users` | Account, profile fields, role, status, TOTP state, email and push preferences (`push_preferences`, defaults in `PUSH_DEFAULTS`), `preferred_currency`, `deletion_requested_at`, `token_version` | `email` and `username` unique (citext); `username` pattern; `display_name` 1 to 80, cleaned at write time of emails and phone numbers; `certificate_name` is what certificates print; `totp_secret` is ciphertext; trigram index over name, username and email for the admin search; partial index on staff roles |
 | `sessions` | One row per refresh token | `token_hash` unique (SHA-256); `family_id` groups every rotation of one login; `replaced_by` marks a rotated row (reuse detection); partial index on live sessions |
 | `auth_tokens` | Email verification and password reset tokens | `token_hash` unique; single use (`used_at`) |
 | `totp_recovery_codes` | HMACs of the ten recovery codes | Primary key `(user_id, code_hash)` |
+| `push_devices` | One installed mobile app that receives pushes: platform (`IOS`, `ANDROID`), FCM token, app version, locale, `last_seen_at` | `token` unique (a token moves to the account that registers it last); index on `user_id`; cascades with the user |
 | `media_uploads` | Every upload, its declared and verified size, status, thumbnail key | `storage_key` unique; partial index on PENDING for the expiry job |
 
 ### Catalog
@@ -151,6 +152,7 @@ instead of burning it. Numbers look like `INV-2026-000042`
 | `enrollments` | The learner-course relationship: source, status, order or bundle, grant note, `valid_until`, revocation, and the progress rollup (`completed_items`, `progress_percent`, `completed_at`, `last_item_id`, `last_activity_at`) | `UNIQUE (user_id, course_id)`: one row per learner and course, re-pointed rather than duplicated when access comes back; index for My Learning order |
 | `item_progress` | Per learner and item: `position_seconds` (resume), `furthest_seconds`, `watched_seconds`, `completed_at` | Primary key `(user_id, item_id)` |
 | `notes`, `bookmarks`, `saved_courses` | Private learner data | Bookmarks and saved courses keyed by `(user_id, ...)` |
+| `offline_downloads` | A licence to keep one video on one device: learner, item, course, `device_id`, `expires_at` (sliding), `revoked_at` | `UNIQUE (user_id, item_id, device_id)`; index `(user_id, created_at DESC, id DESC)` for the admin list; cascades with the user, item and course |
 | `certificates` | Serial, learner, course, frozen `learner_name`, `course_title`, `instructor_names`, `pdf_key`, revocation | `serial` unique; `UNIQUE (user_id, course_id)`: one certificate per learner per course |
 
 An enrollment row is where progress lives, not proof of access: whether it grants access
@@ -170,7 +172,7 @@ learner's subscription ([entitlements.md](entitlements.md)).
 
 | Table | Holds | Constraints worth knowing |
 | --- | --- | --- |
-| `notifications` | Inbox rows with `read_at` and `emailed_at` | Index for the inbox order; partial index on unread |
+| `notifications` | Inbox rows with `read_at`, `emailed_at` and `pushed_at` (each claimed once) | Index for the inbox order; partial index on unread |
 | `settings` | One JSON document, key `academy` | |
 | `audit_log` | Append-only trail: actor, action, entity, IP, data | Indexes by time, entity and actor |
 | `schema_migrations` | Created by the runner: applied file names and checksums | |
@@ -205,5 +207,7 @@ learner's subscription ([entitlements.md](entitlements.md)).
 
 Forward-only SQL files `db/migrations/NNNN_*.sql`, each in its own transaction, recorded with
 a SHA-256 checksum; an applied file must never change. The runner takes advisory lock
-`727101`, so concurrent runs are safe. How to run them locally and on AWS is in
+`727101`, so concurrent runs are safe. `0001_init.sql` is the initial schema;
+`0002_mobile.sql` adds `push_devices`, `offline_downloads`, `users.push_preferences`,
+`notifications.pushed_at` and `courses.allow_downloads` for the mobile app. How to run them locally and on AWS is in
 [operations.md](../guides/operations.md#migrations).

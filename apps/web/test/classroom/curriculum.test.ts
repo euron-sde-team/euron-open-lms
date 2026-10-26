@@ -16,7 +16,7 @@ const item = (id: string, extra: Partial<ClassroomItem> = {}): ClassroomItem => 
 });
 
 const classroom = (role: Classroom["role"] = "LEARNER"): Classroom => ({
-  course: { id: "c", slug: "c", title: "C", coverUrl: null, certificateEnabled: true },
+  course: { id: "c", slug: "c", title: "C", coverUrl: null, certificateEnabled: true, allowDownloads: true },
   role,
   enrollment: { id: "e", progressPercent: 0, completedItems: 0, totalItems: 4, completedAt: null, validUntil: null },
   sections: [

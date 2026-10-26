@@ -95,6 +95,9 @@ module "secrets" {
   evs_playback_key   = var.evs_playback_key
   evs_read_key       = var.evs_read_key
   evs_webhook_secret = var.evs_webhook_secret
+
+  create_push_secret       = var.push_provider == "fcm"
+  fcm_service_account_json = var.fcm_service_account_json
 }
 
 module "database" {
@@ -238,6 +241,7 @@ locals {
     DATA_DIR                   = "/tmp/data"
     AI_PROVIDER                = local.ai_provider
     OPENAI_MODEL               = var.openai_model
+    PUSH_PROVIDER              = var.push_provider
     MIGRATE_ON_BOOT            = tostring(var.migrate_on_boot)
     MIGRATIONS_DIR             = "/app/db/migrations"
     DB_POOL_MAX                = tostring(var.db_pool_max)
@@ -263,7 +267,7 @@ locals {
   }, var.api_extra_environment)
 
   # JWT_SECRET, REFRESH_SECRET, TOTP_ENCRYPTION_KEY, REDIS_URL and, when enabled,
-  # OPENAI_API_KEY, the payment gateway secrets and the EVS keys.
+  # OPENAI_API_KEY, the payment gateway secrets, the EVS keys and the FCM service account.
   api_secrets = concat(module.secrets.secret_refs, module.cache.secret_refs, var.api_extra_secrets)
 
   # One-off tasks need the database; migrate nothing else (no signing keys, no cache,

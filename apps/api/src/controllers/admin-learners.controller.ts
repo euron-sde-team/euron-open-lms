@@ -54,6 +54,16 @@ export async function unban(req: Request, res: Response) {
   res.json(await learners.unban(actorOf(req), parse(idParam, req.params).id, meta(req)));
 }
 
+export async function downloads(req: Request, res: Response) {
+  const q = parse(pageQuery.strict(), req.query);
+  res.json(await learners.listDownloads(actorOf(req), parse(idParam, req.params).id, { ...q, limit: q.limit ?? 20 }));
+}
+
+export async function revokeDownload(req: Request, res: Response) {
+  parse(empty, req.body);
+  res.json(await learners.revokeDownload(actorOf(req), parse(idParam, req.params).id, meta(req)));
+}
+
 export async function erase(req: Request, res: Response) {
   const { reason } = parse(reasonBody, req.body);
   await learners.erase(actorOf(req), parse(idParam, req.params).id, reason, meta(req));

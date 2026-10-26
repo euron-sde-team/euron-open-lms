@@ -24,6 +24,7 @@ export const UPLOAD_LIMITS = {
   AUDIO: 50 * 1024 * 1024,
   PDF: 25 * 1024 * 1024,
   DOCUMENT: 25 * 1024 * 1024,
+  ARCHIVE: 50 * 1024 * 1024,
 } as const;
 
 const EXT_TYPES: Record<string, string> = {
@@ -46,6 +47,7 @@ const EXT_TYPES: Record<string, string> = {
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   csv: "text/csv",
   txt: "text/plain",
+  zip: "application/zip",
 };
 
 /** The browser's type, or one inferred from the extension (HEIC often arrives untyped). */
@@ -63,6 +65,7 @@ export function kindOf(mime: string): UploadKindGuess {
   if (mime.startsWith("audio/")) return "AUDIO";
   if (mime === "application/pdf") return "PDF";
   if (mime.startsWith("application/vnd.openxmlformats") || mime === "text/csv" || mime === "text/plain") return "DOCUMENT";
+  if (mime === "application/zip" || mime === "application/x-zip-compressed") return "ARCHIVE";
   return "OTHER";
 }
 

@@ -18,6 +18,8 @@ export interface JobDefinitions {
   "media.process": { uploadId: string };
   /** Email pending notifications (one id, or every due one when omitted). */
   "notify.email": { notificationId?: string };
+  /** Push one notification to the recipient's devices (services/push.service.ts). */
+  "notify.push": { notificationId: string };
   /** The receipt for a paid order (always sent: not a preference). */
   "notify.receipt": { orderId: string };
   "notify.refund": { refundId: string };

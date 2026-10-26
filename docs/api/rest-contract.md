@@ -19,7 +19,14 @@ Conventions:
 - Ids in paths are ULIDs; slugs are `[a-z0-9-]`. Every body schema is `.strict()`: unknown
   keys are `400 VALIDATION_FAILED`.
 - Auth: `Authorization: Bearer <access token>`; the refresh token is the httpOnly
-  `lms_refresh` cookie on `/api/auth`.
+  `lms_refresh` cookie on `/api/auth`. Native apps send `X-Client: native` instead: every
+  session comes back as `IssuedNativeSession` (`AuthResult` plus `refreshToken` and
+  `refreshExpiresAt`), no cookie is ever set, and `/auth/refresh` and `/auth/logout` take
+  `{ refreshToken }` in the body ([ADR 0020](../architecture/adr/0020-native-token-mode.md)).
+- New passwords (sign-up, reset, change) are 10 to 128 characters: shorter or longer is
+  `400 VALIDATION_FAILED` naming the field (`password` or `newPassword`); a guessable one is
+  `400 WEAK_PASSWORD`. Sign-in accepts any stored password (1 to 128) so older accounts still
+  sign in.
 - `auth` = signed in, `optional` = public with extras when signed in, `public` = no auth.
 - Content routes go through `services/access.service.ts`: unknown or unpublished courses are
   404 to learners; a published course without access is `403 COURSE_ACCESS_REQUIRED` with
@@ -38,17 +45,19 @@ Conventions:
 | POST | /auth/resend-verification, /auth/forgot-password | public | **202** `{ ok: true }` (same answer whether or not the account exists) |
 | POST | /auth/login `{ login, password, totp? \| recoveryCode? }` | public | `AuthResult`, or `{ totpRequired: true }`; 429 once a failure budget is spent |
 | POST | /auth/refresh | cookie | `AuthResult` with a rotated cookie; **204** without a cookie; 401 `SESSION_EXPIRED` |
+| POST | /auth/refresh `{ refreshToken }` + `X-Client: native` | body token | `IssuedNativeSession` (rotated; replaying a rotated token later revokes the family); 401 `SESSION_EXPIRED` |
 | POST | /auth/logout | cookie | 204 |
-| POST | /auth/logout-all | auth | 204 |
+| POST | /auth/logout `{ refreshToken, deviceToken? }` + `X-Client: native` | body token | 204; `deviceToken` (this account's FCM token) also stops pushes to that device |
+| POST | /auth/logout-all | auth | 204 (every session revoked, every push device removed) |
 | POST | /auth/reset-password, /auth/change-password | public / auth | 204 (sessions revoked, `token_version` bumped) |
 | GET | /auth/me | auth | `Me` |
 | POST | /auth/totp/setup, /auth/totp/enable, /auth/totp/disable, /auth/totp/recovery-codes | auth | setup: secret and `otpauth://` URL; enable and recovery-codes: `{ recoveryCodes }`; disable: 204 |
-| GET, PATCH | /users/me | auth | `Me` |
+| GET, PATCH | /users/me | auth | `Me`; PATCH also takes `emailPreferences` and `pushPreferences` (partial maps of `LEARNING`, `COMMUNITY`, `BILLING_REMINDERS`, `PRODUCT_UPDATES` to booleans) |
 | DELETE | /users/me `{ password, totp? \| recoveryCode? }` | auth | `{ purgeAfter }`; 409 `SUBSCRIPTION_ACTIVE`, `LAST_ADMIN` |
 | GET | /users/me/export | auth | JSON download (3 per day) |
 | GET | /users/me/sessions | auth | `SessionInfo[]` |
 | DELETE | /users/me/sessions/:id | auth | 204 |
-| GET | /meta | public | `AcademyMeta` (academy name, tagline, logo, registration, currencies, payment gateways and routing, whether plans exist, AI flags, support email); cached 30 s |
+| GET | /meta | public | `AcademyMeta` (academy name, tagline, logo, registration, currencies, payment gateways and routing, whether plans exist, AI flags, support email, and `mobile: { iosWebPurchaseLink, minSupportedVersion, downloadsEnabled, pushEnabled, appReturnSchemes }`); cached 30 s |
 | GET | /meta/sitemap?type=courses\|bundles\|instructors&cursor= | public | `{ items: { path, updatedAt }[], nextCursor }`, 1000 per page |
 | POST | /media/uploads `{ purpose, fileName, mimeType, sizeBytes }` | auth | **201** `{ uploadId, put }` |
 | POST | /media/uploads/:id/complete | auth | `Media` |
@@ -63,8 +72,8 @@ Conventions:
 
 | Method | Path | Auth | Returns |
 | --- | --- | --- | --- |
-| GET | /catalog/courses?q=&category=&level=&language=&price=free\|paid\|subscription&sort=relevance\|popular\|newest\|rating\|price_asc\|price_desc&currency=&cursor=&limit= | optional | `Page<CourseCard>` |
-| GET | /catalog/facets (same filters) | public | `CatalogFacets` |
+| GET | /catalog/courses?q=&category=&level=&language=&price=free\|paid\|subscription&minRating=3\|3.5\|4\|4.5&length=short\|medium\|long&sort=relevance\|popular\|newest\|rating\|price_asc\|price_desc&currency=&cursor=&limit= | optional | `Page<CourseCard>` |
+| GET | /catalog/facets (same filters) | public | `CatalogFacets`: counts per category, level, language, price, `rating` (`"3"`, `"3.5"`, `"4"`, `"4.5"`, overlapping) and `length` (`short`, `medium`, `long`); each facet ignores its own filter |
 | GET | /catalog/featured?currency= | optional | `{ featured, popular, newest, free }`, each `CourseCard[]` |
 | GET | /catalog/categories | public | `Category[]` |
 | GET | /catalog/courses/:slug?currency= | optional | `CourseDetail` with `access` (DRAFT/ARCHIVED: 404 except to staff) |
@@ -78,6 +87,11 @@ Conventions:
 `currency` picks the display price (else the viewer's `preferredCurrency`, else the academy
 default).
 
+`minRating` keeps courses whose exact average (`rating_sum / rating_count`, not the rounded
+average on a card) is at least that; unrated courses are left out. `length` buckets the
+course's total duration: `short` under 2 hours, `medium` 2 to 6 hours inclusive, `long`
+over 6 hours. Both compose with every other filter, the sorts and the keyset cursor.
+
 ## Classroom: `learn.routes.ts`
 
 | Method | Path | Auth | Returns |
@@ -85,6 +99,7 @@ default).
 | GET | /learn/:courseSlug | auth | `Classroom` (creates the SUBSCRIPTION enrollment on first open under a plan) |
 | GET | /learn/items/:itemId | optional | `ItemContent` (preview lectures open without access) |
 | POST | /learn/items/:itemId/playback | optional | `Playback` (an EVS session minted after the check, an HLS/MP4 URL or a YouTube embed) |
+| POST | /learn/items/:itemId/downloads `{ deviceId }` | auth | **201** `OfflineDownload` (an EVS manifest minted for the longest session, or the HLS/MP4 URL; `offlineExpiresAt` = now + `learning.offline.days`); 403 `COURSE_ACCESS_REQUIRED` (also for a free preview, `details.reason` `PREVIEW_ONLY`); 409 `OFFLINE_DISABLED`, `DOWNLOADS_NOT_ALLOWED`, `NOT_A_VIDEO`, `DOWNLOAD_NOT_SUPPORTED` (YouTube), `VIDEO_NOT_READY`, `DOWNLOAD_LIMIT_REACHED` (`details.limit`) |
 | POST | /learn/items/:itemId/progress `ProgressBeat` | auth | `ProgressResult` (videos; 409 `PREVIEW`, `STAFF_PREVIEW`, `NOT_A_VIDEO`) |
 | POST | /learn/items/:itemId/complete | auth | `ProgressResult` (articles and PDFs; 409 `ITEM_COMPLETES_ITSELF`) |
 | PUT, DELETE | /learn/items/:itemId/bookmark | auth | 204 |
@@ -102,6 +117,10 @@ default).
 | GET | /my/saved?cursor= | auth | `Page<CourseCard>` |
 | GET | /my/bookmarks?cursor= | auth | `Page<{ item: { id, title, kind }, course: { slug, title }, createdAt }>` |
 | GET | /my/certificates | auth | `Certificate[]` |
+| PUT | /my/devices `{ platform: IOS\|ANDROID, token, appVersion?, locale? }` | auth | `PushDevice` (upsert by FCM token; a token another account registered moves to you) |
+| DELETE | /my/devices/:token | auth | 204 (also for an unknown or someone else's token) |
+| POST | /my/downloads/validate `{ deviceId, itemIds }` (at most 500) | auth | `OfflineValidation` `{ valid: [{ itemId, offlineExpiresAt }], revoked: [itemId] }`; valid licences slide forward, the rest are revoked |
+| DELETE | /my/downloads/:itemId?deviceId= | auth | 204 (idempotent) |
 
 ## Certificates: `certificates.routes.ts`
 
@@ -144,7 +163,7 @@ default).
 | --- | --- | --- | --- |
 | GET | /checkout/plans?currency= | optional | `Plan[]` |
 | POST | /checkout/quote `CheckoutQuoteRequest` | auth | `CheckoutQuote` (an inapplicable coupon comes back as `couponError`) |
-| POST | /checkout/start `CheckoutStartRequest` | auth | **201** `CheckoutHandoff` (`REDIRECT`, `RAZORPAY_MODAL` or `FULFILLED`); the same order for a repeated `idempotencyKey` |
+| POST | /checkout/start `CheckoutStartRequest` | auth | **201** `CheckoutHandoff` (`REDIRECT`, `RAZORPAY_MODAL` or `FULFILLED`); the same order for a repeated `idempotencyKey`. Stripe takes an optional `returnUrl` (a page on the web origin, normally `/checkout/app-return?app=openlms`, which hands off to the app; or an app link in `MOBILE_RETURN_SCHEMES`, used by the stub flow; `orderId` and `session_id` or `canceled=1` are appended), else 400 `RETURN_URL_NOT_ALLOWED`. `RAZORPAY_MODAL` carries `mode` (`native` or `stub`) and, in stub mode, `checkoutPageUrl` |
 | POST | /checkout/razorpay/confirm `RazorpayConfirm` | auth | `Order` (signature verified, payment fetched, fulfilled when captured); 400 `PAYMENT_NOT_VERIFIED` |
 | GET | /checkout/orders/:id?sync=1 | auth (own) | `Order`; `sync` asks Stripe once about a PENDING order |
 | POST | /checkout/orders/:id/cancel | auth (own, PENDING) | `Order`; 409 `ORDER_NOT_PENDING` |
@@ -262,6 +281,8 @@ content, GRADER reads); a visible course without the right is 403 `COURSE_ROLE_R
 | PATCH | /admin/enrollments/:id `{ validUntil }` | learners | `AdminEnrollment` |
 | POST | /admin/learners/:id/suspend `{ days, reason }`, /unsuspend, /ban `{ reason }`, /unban | learners | `AdminUserRow` |
 | POST | /admin/learners/:id/erase `{ reason }` | ADMIN | 204 |
+| GET | /admin/learners/:id/downloads?cursor= | learners | `Page<AdminDownloadRow>` (offline downloads, newest first) |
+| POST | /admin/downloads/:id/revoke `{}` | learners | `AdminDownloadRow`; audited `download.revoke`; 409 `DOWNLOAD_REVOKED` |
 | GET | /admin/certificates?q=&cursor= | certificates | `Page<AdminCertificateRow>` |
 | POST | /admin/certificates/:id/revoke `{ reason }`, /restore | certificates | `AdminCertificateRow` |
 | GET | /admin/staff?role=&q=&cursor= | staff | `Page<StaffRow>` |

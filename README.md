@@ -165,8 +165,9 @@ Euron Open LMS is a complete academy you run yourself, with those hard parts don
 | **Learning** | Catalog with full-text search and filters, course pages, My Learning, a classroom for video, articles and PDFs, notes, bookmarks, lecture Q&A, reviews, certificates with public verification |
 | **Assessment** | A question bank, quizzes with server-side timers and attempt policies, assignments with rubrics, versions and a grading queue, AI drafts for questions and grades |
 | **Commerce** | Stripe and Razorpay, course and bundle purchases, an all-access subscription, a per-currency price book, coupons, tax, invoices, refunds and credit notes |
+| **Mobile app** | A React Native learner app for iOS and Android in [euron-open-lms-mobile-application](https://github.com/euron-sde-team/euron-open-lms-mobile-application), served by this API: native sessions, push notifications, offline downloads |
 | **Infrastructure** | 13 Terraform modules, 3 environments (local emulator, AWS dev, AWS prod) |
-| **Tests** | 549 unit, 281 integration (run under 12 backend combinations), 18 browser end-to-end |
+| **Tests** | 573 unit, 311 integration (run under 12 backend combinations), 18 browser end-to-end |
 | **License** | MIT |
 
 ## 🖼️ Screenshots
@@ -232,6 +233,7 @@ Euron Open LMS is a complete academy you run yourself, with those hard parts don
 | **Commerce** | Stripe Checkout and Billing, Razorpay Orders and Subscriptions, gateway routing per currency, a price book in minor units, coupons with scopes and limits, inclusive or exclusive tax, gap-free invoices, refunds and credit notes, reconciliation of lost webhooks |
 | **Account center** | Profile and avatar, email change with a code, password, two-factor sign-in with recovery codes, sessions, orders and invoices, the subscription (cancel at period end, resume, change plan), notification preferences, data export, account deletion |
 | **Control plane** | Role-scoped areas for admins, support, finance and instructors: overview with CSV export, courses and the curriculum builder, learners and grants, grading, orders and refunds, plans and bundles, coupons, certificates, moderation, staff and roles, settings, audit log |
+| **Mobile app** | [euron-open-lms-mobile-application](https://github.com/euron-sde-team/euron-open-lms-mobile-application) for iOS and Android: native sessions with a keystore-held refresh token, push notifications through FCM with per-category switches, offline video downloads that are revalidated against access and revocable from `/admin`, Stripe and Razorpay checkout handed back to the app |
 | **AI** | Quiz questions from a lecture, grade suggestions against a rubric, description polish; OpenAI by default, Gemini, a stub, or off; every result is a draft |
 
 ## 🏗️ Architecture
@@ -498,8 +500,8 @@ Details, and an honest list of known limitations, are in
 
 | Suite | What it proves | Run |
 |---|---|---|
-| Unit (549) | Entitlements, pricing with coupons and tax, order moves, webhook signatures for both gateways, quiz grading and attempt policy, rubric totals, progress rollup, curriculum packing, safe URLs, the markdown sanitiser, the web app's state logic and components, the API client | `make test` |
-| Integration (281) | The real API in-process against Postgres and Redis with the stubs: every route group, an authorisation sweep (no entitlement, forged and cross-course ids, instructor fencing, expired grants and plans), webhook duplicates, late failures, amount mismatches and races, refunds, coupon races | `make test-integration` |
+| Unit (573) | Entitlements, pricing with coupons and tax, order moves, webhook signatures for both gateways, quiz grading and attempt policy, rubric totals, progress rollup, curriculum packing, safe URLs, the markdown sanitiser, the web app's state logic and components, the API client | `make test` |
+| Integration (311) | The real API in-process against Postgres and Redis with the stubs: every route group, native sessions, push and offline downloads, an authorisation sweep (no entitlement, forged and cross-course ids, instructor fencing, expired grants and plans), webhook duplicates, late failures, amount mismatches and races, refunds, coupon races | `make test-integration` |
 | Matrix (12 runs) | The integration suite under every backend: local or S3 storage, outbox, SMTP or SES mail, AI off or the stub | `make test-matrix` |
 | Browser (18) | Sign-up, the catalog, free enrollment and the classroom, buying with Stripe, buying with Razorpay and a coupon, subscriptions, quizzes, assignment review, certificates, the course builder, refunds, reviews, Q&A and moderation, the access guard | `make e2e` |
 | Infrastructure | `terraform validate` for three environments, tflint, checkov, shellcheck, gitleaks | `make tf-validate tf-lint tf-security` |
@@ -519,7 +521,7 @@ How to run each suite, and what the matrix covers, is in [docs/guides/testing.md
 | [Assessments](docs/architecture/assessments.md) | [Grading and moderation](docs/guides/grading-and-moderation.md) |
 | [Progress and certificates](docs/architecture/progress-and-certificates.md) | [Operations](docs/guides/operations.md) |
 | [Security](docs/architecture/security.md) and [threat model](docs/architecture/threat-model.md) | [Troubleshooting](docs/guides/troubleshooting.md) |
-| [Decision records (19)](docs/architecture/adr/README.md) | [Testing](docs/guides/testing.md) |
+| [Decision records (22)](docs/architecture/adr/README.md) | [Testing](docs/guides/testing.md) |
 | | [Walkthrough: a learner and an instructor, end to end](docs/guides/walkthrough.md) |
 
 ## 🗺️ Roadmap
@@ -549,6 +551,17 @@ In [euron-video-system](https://github.com/euron-sde-team/euron-video-system), o
 video platform: upload there, then pick the video on a lecture. The LMS only mints playback
 sessions for learners who have access. Any HLS or MP4 URL or a YouTube video works too.
 See [ADR 0015](docs/architecture/adr/0015-video-delegated-to-euron-video-system.md).
+</details>
+
+<details>
+<summary><b>Is there a mobile app?</b></summary>
+
+Yes: [euron-open-lms-mobile-application](https://github.com/euron-sde-team/euron-open-lms-mobile-application), a React Native learner app for iOS and
+Android that talks to this API. It signs in with native sessions
+([ADR 0020](docs/architecture/adr/0020-native-token-mode.md)), receives push notifications
+when `PUSH_PROVIDER=fcm` ([ADR 0021](docs/architecture/adr/0021-push-through-fcm-http-v1.md))
+and saves videos for offline viewing while access lasts
+([ADR 0022](docs/architecture/adr/0022-offline-downloads-inside-a-playback-session.md)).
 </details>
 
 <details>

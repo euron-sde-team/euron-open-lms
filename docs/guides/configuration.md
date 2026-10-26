@@ -13,7 +13,7 @@ of them is still a default.
 
 A key value of `set-me` (the Terraform placeholder) counts as **not configured** for
 `STRIPE_SECRET_KEY`, `RAZORPAY_KEY_SECRET`, `EVS_PLAYBACK_KEY`, `EVS_READ_KEY`,
-`OPENAI_API_KEY` and `GEMINI_API_KEY`. It does **not** for the three webhook secrets:
+`OPENAI_API_KEY`, `GEMINI_API_KEY` and `FCM_SERVICE_ACCOUNT_JSON`. It does **not** for the three webhook secrets:
 replace those before enabling a gateway ([security.md](../architecture/security.md#known-limitations)).
 
 ## API and worker
@@ -124,7 +124,20 @@ Setup: [payments.md](payments.md).
 | `RAZORPAY_KEY_SECRET` | unset | Basic auth and the Checkout.js signature |
 | `RAZORPAY_WEBHOOK_SECRET` | unset | The secret you set on the Razorpay webhook |
 | `RAZORPAY_API_BASE` | `https://api.razorpay.com` | The stub locally |
-| `RAZORPAY_CHECKOUT_SCRIPT_URL` | `https://checkout.razorpay.com/v1/checkout.js` | Script the checkout page loads (the stub's `checkout.js` locally) |
+| `RAZORPAY_CHECKOUT_SCRIPT_URL` | `https://checkout.razorpay.com/v1/checkout.js` | Script the checkout page loads (the stub's `checkout.js` locally). Any other value marks the Razorpay handoff `mode: "stub"` and adds the stubs' full-page `checkoutPageUrl` for the mobile app; production warns |
+| `MOBILE_RETURN_SCHEMES` | `openlms` | Comma-separated URL schemes a Stripe checkout may return to besides the web origin (the mobile app's `openlms://` links; `returnUrl` on `POST /api/checkout/start`). Also sent as `mobile.appReturnSchemes` in `GET /api/meta`: the web page `/checkout/app-return?app=<scheme>` only hands off to these |
+
+### Push notifications (mobile app)
+
+Design: [ADR 0021](../architecture/adr/0021-push-through-fcm-http-v1.md).
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PUSH_PROVIDER` | `none` | `none` (nothing queued), `fcm` (Firebase Cloud Messaging HTTP v1, Android and iOS through APNs) or `stub` (apps/stubs). The production guard refuses `stub`; `GET /api/meta` reports `mobile.pushEnabled` |
+| `FCM_SERVICE_ACCOUNT_JSON` | unset | A secret: the Google service account key JSON (`project_id`, `client_email`, `private_key`) allowed to send messages. The API signs its own OAuth token from it (RS256, cached until a minute before expiry). Production warns when `fcm` is selected without it |
+| `FCM_BASE_URL` | `https://fcm.googleapis.com` | Where `messages:send` goes; production warns when it is not the default |
+| `FCM_TOKEN_URL` | the key's `token_uri` | OAuth token endpoint override (a stub in tests) |
+| `PUSH_STUB_URL` | `http://localhost:5119` | The stub server for `PUSH_PROVIDER=stub` (`GET /fcm/messages` lists what was sent) |
 
 ### Video (euron-video-system)
 
@@ -158,11 +171,13 @@ Setup: [video-with-evs.md](video-with-evs.md).
 | `MAIL_MODE=outbox`, or no `MAIL_FROM` | Use `ses` or `smtp` with a sender |
 | `JOBS_MODE=inline` | Use `queue` and run a worker |
 | `AI_PROVIDER=stub` | `openai`, `gemini` or `none` |
+| `PUSH_PROVIDER=stub` | `fcm` or `none` |
 | `BCRYPT_ROUNDS` below 12 | 12 or more |
 
 `productionWarnings()` logs, without refusing: no payment gateway configured; Stripe or
-Razorpay enabled without its webhook secret; `STRIPE_API_BASE` or `RAZORPAY_API_BASE` not
-the real API. Outside production both lists are logged as warnings at boot.
+Razorpay enabled without its webhook secret; `STRIPE_API_BASE`, `RAZORPAY_API_BASE`,
+`RAZORPAY_CHECKOUT_SCRIPT_URL` or `FCM_BASE_URL` not the real service; `PUSH_PROVIDER=fcm`
+without a `FCM_SERVICE_ACCOUNT_JSON`. Outside production both lists are logged as warnings at boot.
 
 ## Web app
 
@@ -200,7 +215,8 @@ override it. `make env` writes `deploy/compose/.env`:
 
 Defaults set by the base file: `NODE_ENV=development`, `APP_WEB_URL`, `PUBLIC_API_URL` and
 `CORS_ORIGINS` on `http://localhost:3530`, `COOKIE_SECURE=false`, `JOBS_MODE=queue`,
-`MIGRATE_ON_BOOT=false`, `AI_PROVIDER=stub`, every gateway and EVS base URL on
+`MIGRATE_ON_BOOT=false`, `AI_PROVIDER=stub`, `PUSH_PROVIDER=stub` (`PUSH_STUB_URL`
+`http://stubs:5119`), every gateway and EVS base URL on
 `http://stubs:5119`, `RAZORPAY_CHECKOUT_SCRIPT_URL` and `VIDEO_ORIGINS` on
 `http://localhost:5119`. The Floci overlay adds `STORAGE=s3`, `MAIL_MODE=ses`, the emulator
 endpoints and `MEDIA_ORIGINS=http://localhost:4597`. To use a real provider, set its
@@ -216,7 +232,7 @@ builds the api and worker environment. Fixed values: `NODE_ENV=production`, `TZ=
 The inputs below are the deployment module's. `envs/aws-dev` and `envs/aws-prod` expose a
 subset in their `variables.tf` (domain, DNS and certificate, mail domain, product name,
 image tag, CDN, alarm email, AI (`ai_provider`, `openai_model`), payments, EVS, video
-origins, extra CORS origins, `log_level`, `require_email_verification`,
+origins, push (`push_provider`, `fcm_service_account_json`), extra CORS origins, `log_level`, `require_email_verification`,
 `api_extra_environment`, `api_extra_secrets`, instance classes, CPU architecture, the
 application database role); `db_pool_max` and `migrate_on_boot` keep the module
 defaults unless you pass them through in the env's `main.tf`.
@@ -234,6 +250,7 @@ defaults unless you pass them through in the env's `main.tf`.
 | `enable_razorpay`, `razorpay_key_id`, `razorpay_key_secret`, `razorpay_webhook_secret` | `RAZORPAY_KEY_ID`; the two secrets from `<prefix>/payments` |
 | `evs_base_url`, `evs_playback_key`, `evs_read_key`, `evs_webhook_secret` | `EVS_BASE_URL`; the three keys from `<prefix>/evs` |
 | `video_origins` | the web app's `VIDEO_ORIGINS` (default: the origin of `evs_base_url`) |
+| `push_provider`, `fcm_service_account_json` | `PUSH_PROVIDER` (default `none`); with `fcm`, `FCM_SERVICE_ACCOUNT_JSON` from `<prefix>/push` (`set-me` until replaced by hand) |
 | `app_db_secret_arn`, `app_db_username` | `DATABASE_SECRET_ARN`, `DB_USER` of the api and worker (default: the RDS master) |
 | `api_extra_environment`, `api_extra_secrets` | Anything else, for example `GEMINI_API_KEY` |
 
@@ -267,5 +284,10 @@ map are replaced as a whole. Validation is in
 | `learning.reviewMinProgressPercent` | 20 | 1 to 100: progress needed to review a course |
 | `learning.subscriptionGraceDays` | 3 | 0 to 30: access kept after a failed renewal |
 | `learning.orderTtlMinutes` | 60 | 5 to 1440: how long a pending order stays payable |
+| `learning.offline.enabled` | true | Offline downloads in the mobile app (each course can also switch them off: `allowDownloads`) |
+| `learning.offline.days` | 30 | 1 to 365: how long a saved video plays without the app checking in |
+| `learning.offline.maxPerUser` | 25 | 1 to 500: active downloads per learner, across devices |
+| `mobile.iosWebPurchaseLink` | false | The iOS app may link to the web checkout (only where the App Store allows it) |
+| `mobile.minSupportedVersion` | null | `x.y.z`: older app versions ask the learner to update |
 | `certificates.signatoryName`, `signatoryTitle`, `footer` | empty | Printed on certificates |
 | `analytics.timezone` | `UTC` | IANA zone for the overview's days and the learner streak |

@@ -35,6 +35,7 @@ const patchBody = z
     accessMode: z.enum(["FREE", "PAID", "SUBSCRIPTION_ONLY"]),
     includedInSubscription: z.boolean(),
     certificateEnabled: z.boolean(),
+    allowDownloads: z.boolean(),
     featured: z.boolean(),
   })
   .partial()

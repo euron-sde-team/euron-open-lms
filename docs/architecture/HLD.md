@@ -31,7 +31,10 @@ All code paths are relative to the repository root.
 
 ![System context: learners, instructors, staff and the operator use one web app; the API talks to Postgres, Redis, S3, SES, Stripe, Razorpay, euron-video-system and an optional AI provider](../assets/diagrams/context.svg)
 
-Everyone uses the same web app. What a person can do depends on their platform role
+Everyone uses the same web app; learners can also use the
+[mobile app](https://github.com/euron-sde-team/euron-open-lms-mobile-application) (iOS and
+Android), which calls the same API with native sessions
+([ADR 0020](adr/0020-native-token-mode.md)). What a person can do depends on their platform role
 (`users.role`) and, for authoring, on their role in a course's staff
 (`course_staff.role`: `OWNER`, `EDITOR` or `GRADER`).
 
@@ -59,6 +62,7 @@ The outside systems:
 | Mail (SES v2 or SMTP) | Verification, password reset, receipts, refunds, notification mail | [`integrations/mail/mailer.ts`](../../apps/api/src/integrations/mail/mailer.ts) |
 | S3 (private bucket) | Covers, avatars, PDF lectures, resources, submission files, invoice and certificate PDFs | [`integrations/storage.ts`](../../apps/api/src/integrations/storage.ts) |
 | AI provider (OpenAI, Gemini, the stub, or none) | Quiz drafts, grading suggestions, polish | [`integrations/ai/`](../../apps/api/src/integrations/ai/index.ts) |
+| Firebase Cloud Messaging (or the stub, or none) | Push notifications to the mobile app, Android directly and iOS through APNs (`notify.push`, [ADR 0021](adr/0021-push-through-fcm-http-v1.md)) | [`integrations/push/`](../../apps/api/src/integrations/push/index.ts) |
 
 Three flows bypass the API on purpose:
 

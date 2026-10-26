@@ -24,6 +24,8 @@ export const DEV_DEFAULTS = {
   TOTP_ENCRYPTION_KEY: crypto.createHash("sha256").update("change-me-open-lms-local-totp-encryption-key").digest("base64"),
 } as const;
 
+export const RAZORPAY_CHECKOUT_SCRIPT = "https://checkout.razorpay.com/v1/checkout.js";
+
 /** A base64 string that decodes to exactly 32 bytes (an AES-256 key). */
 const key32 = z.string().refine((v) => Buffer.from(v, "base64").length === 32, "must be 32 bytes, base64 encoded (openssl rand -base64 32)");
 
@@ -139,7 +141,33 @@ const schema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   RAZORPAY_API_BASE: z.string().url().default("https://api.razorpay.com"),
-  RAZORPAY_CHECKOUT_SCRIPT_URL: z.string().url().default("https://checkout.razorpay.com/v1/checkout.js"),
+  RAZORPAY_CHECKOUT_SCRIPT_URL: z.string().url().default(RAZORPAY_CHECKOUT_SCRIPT),
+  /**
+   * URL schemes a Stripe checkout may send the buyer back to besides the web origin
+   * (the mobile app's `openlms://` links). Comma separated, without "://".
+   */
+  MOBILE_RETURN_SCHEMES: z
+    .string()
+    .default("openlms")
+    .transform((v) =>
+      v
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+
+  /**
+   * Push notifications to the mobile app: none (default), fcm (Firebase Cloud Messaging
+   * HTTP v1, which also reaches iOS through APNs) or stub (the HTTP fake in apps/stubs).
+   * FCM_SERVICE_ACCOUNT_JSON is a Google service account key (a secret) allowed to send
+   * messages; the API mints its own short-lived OAuth token from it.
+   */
+  PUSH_PROVIDER: z.enum(["none", "fcm", "stub"]).default("none"),
+  FCM_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  FCM_BASE_URL: z.string().url().default("https://fcm.googleapis.com"),
+  /** OAuth token endpoint; default the service account's token_uri. */
+  FCM_TOKEN_URL: z.string().url().optional(),
+  PUSH_STUB_URL: z.string().default("http://localhost:5119"),
 
   /**
    * euron-video-system: where EVS lectures play from. The playback key needs the
@@ -219,6 +247,7 @@ export function assertProductionConfig(c: Config = config): string[] {
   if (c.MAIL_MODE !== "outbox" && !c.MAIL_FROM) problems.push("MAIL_FROM is not set");
   if (c.JOBS_MODE === "inline") problems.push("JOBS_MODE=inline runs background work on the request path");
   if (c.AI_PROVIDER === "stub") problems.push("AI_PROVIDER=stub is a test double");
+  if (c.PUSH_PROVIDER === "stub") problems.push("PUSH_PROVIDER=stub is a test double");
   if (c.BCRYPT_ROUNDS < 12) problems.push("BCRYPT_ROUNDS below 12 weakens stored passwords");
   if (c.NODE_ENV === "production" && problems.length) {
     throw new Error(`Refusing to start with an insecure configuration:\n  - ${problems.join("\n  - ")}`);
@@ -237,6 +266,9 @@ export function productionWarnings(c: Config = config): string[] {
   if (razorpayEnabled(c) && !c.RAZORPAY_WEBHOOK_SECRET) warnings.push("RAZORPAY_WEBHOOK_SECRET is not set: Razorpay payments would never be confirmed by webhook");
   if (c.STRIPE_API_BASE !== "https://api.stripe.com") warnings.push("STRIPE_API_BASE points at a stub");
   if (c.RAZORPAY_API_BASE !== "https://api.razorpay.com") warnings.push("RAZORPAY_API_BASE points at a stub");
+  if (razorpayCheckoutIsStub(c)) warnings.push("RAZORPAY_CHECKOUT_SCRIPT_URL points at a stub");
+  if (c.PUSH_PROVIDER === "fcm" && !isRealKey(c.FCM_SERVICE_ACCOUNT_JSON)) warnings.push("PUSH_PROVIDER=fcm but FCM_SERVICE_ACCOUNT_JSON is not set: push notifications are not sent");
+  if (c.PUSH_PROVIDER === "fcm" && c.FCM_BASE_URL !== "https://fcm.googleapis.com") warnings.push("FCM_BASE_URL points at a stub");
   return warnings;
 }
 
@@ -260,6 +292,16 @@ export function stripeEnabled(c: Pick<Config, "STRIPE_SECRET_KEY"> = config): bo
 
 export function razorpayEnabled(c: Pick<Config, "RAZORPAY_KEY_ID" | "RAZORPAY_KEY_SECRET"> = config): boolean {
   return !!c.RAZORPAY_KEY_ID?.trim() && !!c.RAZORPAY_KEY_SECRET?.trim() && c.RAZORPAY_KEY_SECRET.trim() !== "set-me";
+}
+
+/** The Razorpay modal is the local stub's (the checkout script is not Razorpay's). */
+export function razorpayCheckoutIsStub(c: Pick<Config, "RAZORPAY_CHECKOUT_SCRIPT_URL"> = config): boolean {
+  return c.RAZORPAY_CHECKOUT_SCRIPT_URL !== RAZORPAY_CHECKOUT_SCRIPT;
+}
+
+/** Push notifications are on (a provider is chosen; fcm without a key logs and sends nothing). */
+export function pushEnabled(c: Pick<Config, "PUSH_PROVIDER"> = config): boolean {
+  return c.PUSH_PROVIDER !== "none";
 }
 
 /** EVS lectures can play: a base URL and a playback-scoped key. */

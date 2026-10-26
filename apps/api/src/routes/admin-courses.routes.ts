@@ -23,7 +23,7 @@ router.post("/", rateLimit("course-create", 30, 3600), ctrl.create);
 router.get("/:id", ctrl.get);
 /**
  * Edit `{ title?, subtitle?, description?, outcomes?, prerequisites?, level?, language?, coverUploadId?, categoryIds?, slug?,
- * accessMode?, includedInSubscription?, certificateEnabled?, featured? }`. Settings fields (slug, access, certificate) need OWNER;
+ * accessMode?, includedInSubscription?, certificateEnabled?, allowDownloads?, featured? }`. Settings fields (slug, access, certificate, downloads) need OWNER;
  * featured needs ADMIN. Never changes status. Returns `AdminCourse`. 409 SLUG_TAKEN, 400 CATEGORY_NOT_FOUND, MEDIA_INVALID.
  */
 router.patch("/:id", ctrl.update);

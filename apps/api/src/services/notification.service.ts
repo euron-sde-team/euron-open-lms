@@ -8,11 +8,14 @@
  *   - collapse duplicates: the same (recipient, actor, type, entity) within an hour
  *     updates the existing row instead of stacking a new one;
  *   - email follows the learner's per-category switches (EMAIL_CATEGORY below), except
- *     the categories that must always arrive (receipts, refunds, account security).
+ *     the categories that must always arrive (receipts, refunds, account security);
+ *   - push (when PUSH_PROVIDER is set) follows the push switches by the same map, in its
+ *     own job (services/push.service.ts), so a slow email never delays a push.
  */
 import type { EmailCategory, Notification, NotificationCounts, NotificationType } from "@open-lms/types";
 import { sql } from "kysely";
 import type { Actor } from "../core/context";
+import { pushEnabled } from "../core/config";
 import type { Effects } from "../core/effects";
 import { notFound } from "../core/errors";
 import { newId } from "../core/ids";
@@ -113,6 +116,7 @@ export async function notify(input: NotifyInput, fx: Effects, exec: Executor = d
         .executeTakeFirstOrThrow();
 
   fx.job("notify.email", { notificationId: row.id });
+  if (pushEnabled()) fx.job("notify.push", { notificationId: row.id });
 }
 
 export async function countsFor(userId: string, exec: Executor = db): Promise<NotificationCounts> {

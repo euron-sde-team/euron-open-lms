@@ -9,6 +9,12 @@ Paths are relative to the repository root.
 - Passwords: bcrypt with `BCRYPT_ROUNDS` (12; the production guard refuses less), 10 to 128
   characters, not one repeated character, not containing the email local part or the
   username ([`apps/api/src/security/passwords.ts`](../../apps/api/src/security/passwords.ts)).
+  The length rule is enforced twice for every **new** password (sign-up, reset, change):
+  the request schema answers `400 VALIDATION_FAILED` naming the field (`password` or
+  `newPassword`) outside 10 to 128 characters, before `passwordProblem` refuses guessable
+  ones (`400 WEAK_PASSWORD`). Sign-in, and the password confirmations for deletion and
+  two-factor changes, accept any 1 to 128 characters, so an account created before the rule
+  still signs in and can then change its password.
 - Sign-in is throttled, never locked (a lock anyone can trigger is a denial of service
   against the owner): 5 failures per account and IP per 15 minutes and 50 per account per
   hour, in Redis. Once spent, every attempt answers `429 RATE_LIMITED`, right password or
@@ -47,6 +53,25 @@ Paths are relative to the repository root.
   `403 CORS_ORIGIN_DENIED` ([`apps/api/src/app.ts`](../../apps/api/src/app.ts)).
 - The web app serialises refreshes across tabs with the Web Locks API and single-flights
   them within a tab ([`packages/api-client/src/http.ts`](../../packages/api-client/src/http.ts)).
+- Native apps (`X-Client: native`, [ADR 0020](adr/0020-native-token-mode.md)) receive the
+  refresh token in the response body and send it back in a strict body to
+  `/api/auth/refresh` and `/api/auth/logout`; no cookie is set or cleared. Rotation, the
+  10 s grace and family revocation are the same code. The app keeps the token in the
+  platform keystore. A native caller sends no `Origin`, so the cross-site check above does
+  not apply to it, and does not need to: there is no ambient credential to abuse.
+- Sign-out everywhere, password change and reset, a requested deletion and erasure delete
+  the account's push devices, so a signed-out phone stops receiving notifications. A push
+  token registered by a second account moves to that account (the device changed hands).
+
+### Offline downloads
+
+A saved video is a licence row, not a free file ([ADR 0022](adr/0022-offline-downloads-inside-a-playback-session.md)):
+issued only through the playback access check (never for a free preview), capped per
+learner, valid for `learning.offline.days` since the app last revalidated, and revoked at
+the next online check when access ends or is refunded, when downloads are switched off for
+the academy or the course, or when support revokes it (`download.revoke`, audited). The
+stream itself is an EVS session bound to the viewer, or the HLS/MP4 URL, as online; device
+enforcement (an encrypted store, deleting revoked copies) is the mobile app's job.
 
 ## 3. Authorisation
 
