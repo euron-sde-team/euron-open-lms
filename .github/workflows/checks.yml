@@ -1,0 +1,57 @@
+# Fast checks run on this repository: lint, typecheck and unit tests across every
+# package, Terraform formatting and validation, the OpenAPI reference and the
+# sanitization scan. The full pipeline (integration tests on Postgres + Redis, image
+# builds, Terraform security, gitleaks, e2e) lives in .github/workflows-full/: enable
+# it in your fork.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: lint · typecheck · unit tests · openapi · sanitization
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: OpenAPI reference matches the routes
+        run: pnpm openapi --check
+      - name: Sanitization scan
+        run: scripts/check-sanitization.sh
+
+  terraform:
+    name: terraform fmt · validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+      - run: terraform fmt -check -recursive infra/terraform
+      - name: validate every environment
+        run: |
+          for env in local-floci aws-dev aws-prod; do
+            echo "== $env"
+            terraform -chdir=infra/terraform/envs/$env init -backend=false -input=false -no-color >/dev/null
+            terraform -chdir=infra/terraform/envs/$env validate -no-color
+          done

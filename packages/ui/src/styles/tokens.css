@@ -1,0 +1,153 @@
+/*
+ * Design tokens. Colours are HSL triplets so Tailwind can apply alpha
+ * (`bg-primary/10`). Light is the default; dark applies when the OS prefers it
+ * (unless the person picked light) or when they picked dark explicitly.
+ * The app sets `data-theme` on <html> to "light" or "dark" for a manual choice.
+ *
+ * The palette: one teal brand, ink for text and solid calls to action, cool grey
+ * grounds and hairlines. `primary` is the brand darkened until white text on it passes
+ * WCAG AA; `brand` is the brighter accent for rings, progress and illustrations.
+ */
+:root {
+  --background: 216 33% 97%;
+  --foreground: 222 49% 8%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 49% 8%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 49% 8%;
+  --muted: 216 28% 95%;
+  --muted-foreground: 220 13% 35%;
+  --subtle-foreground: 220 10% 46%;
+  --border: 216 25% 91%;
+  --input: 216 18% 82%;
+  --ring: 188 86% 36%;
+  --primary: 188 87% 29%;
+  --primary-foreground: 0 0% 100%;
+  --primary-soft: 186 60% 94%;
+  --primary-soft-foreground: 189 86% 24%;
+  --link: 189 86% 27%;
+  --brand: 188 85% 37%;
+  --ink: 222 49% 8%;
+  --ink-foreground: 0 0% 100%;
+  --ground-2: 216 30% 94%;
+  --success: 157 70% 28%;
+  --success-foreground: 0 0% 100%;
+  --success-soft: 152 55% 94%;
+  --success-soft-foreground: 157 75% 22%;
+  --warning: 32 90% 32%;
+  --warning-foreground: 0 0% 100%;
+  --warning-soft: 42 95% 92%;
+  --warning-soft-foreground: 30 90% 27%;
+  --danger: 350 72% 45%;
+  --danger-foreground: 0 0% 100%;
+  --danger-soft: 350 85% 96%;
+  --danger-soft-foreground: 350 72% 36%;
+  --star: 38 92% 50%;
+  --overlay: 222 49% 6%;
+
+  --radius: 14px;
+  --radius-card: 20px;
+  --shadow-card: 0 1px 2px hsl(222 49% 8% / 0.04), 0 12px 32px -16px hsl(222 49% 8% / 0.14), 0 0 0 1px hsl(222 49% 8% / 0.05);
+  --shadow-card-hover: 0 2px 4px hsl(222 49% 8% / 0.05), 0 22px 44px -18px hsl(222 49% 8% / 0.22), 0 0 0 1px hsl(188 85% 37% / 0.3);
+  --shadow-popover: 0 14px 36px -10px hsl(222 49% 8% / 0.22), 0 2px 6px hsl(222 49% 8% / 0.08);
+  --header-height: 64px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: 215 28% 7%;
+    --foreground: 210 33% 93%;
+    --card: 215 21% 11%;
+    --card-foreground: 210 33% 93%;
+    --popover: 215 19% 14%;
+    --popover-foreground: 210 33% 93%;
+    --muted: 215 16% 17%;
+    --muted-foreground: 212 14% 70%;
+    --subtle-foreground: 212 10% 58%;
+    --border: 212 12% 21%;
+    --input: 212 11% 29%;
+    --ring: 186 70% 52%;
+    --primary: 186 72% 45%;
+    --primary-foreground: 215 28% 7%;
+    --primary-soft: 188 45% 15%;
+    --primary-soft-foreground: 185 70% 70%;
+    --link: 185 72% 62%;
+    --brand: 186 72% 48%;
+    --ink: 210 33% 93%;
+    --ink-foreground: 215 28% 7%;
+    --ground-2: 215 18% 13%;
+    --success: 152 55% 40%;
+    --success-foreground: 215 28% 7%;
+    --success-soft: 152 35% 15%;
+    --success-soft-foreground: 150 55% 70%;
+    --warning: 36 85% 50%;
+    --warning-foreground: 215 28% 7%;
+    --warning-soft: 35 45% 15%;
+    --warning-soft-foreground: 40 90% 70%;
+    --danger: 350 70% 58%;
+    --danger-foreground: 215 28% 7%;
+    --danger-soft: 350 40% 16%;
+    --danger-soft-foreground: 350 85% 78%;
+    --star: 40 92% 56%;
+    --overlay: 215 40% 3%;
+    --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.35), 0 0 0 1px hsl(210 33% 93% / 0.05);
+    --shadow-card-hover: 0 2px 4px hsl(0 0% 0% / 0.4), 0 22px 44px -18px hsl(0 0% 0% / 0.6), 0 0 0 1px hsl(186 72% 48% / 0.35);
+    --shadow-popover: 0 14px 36px -10px hsl(0 0% 0% / 0.65), 0 2px 6px hsl(0 0% 0% / 0.35);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --background: 215 28% 7%;
+  --foreground: 210 33% 93%;
+  --card: 215 21% 11%;
+  --card-foreground: 210 33% 93%;
+  --popover: 215 19% 14%;
+  --popover-foreground: 210 33% 93%;
+  --muted: 215 16% 17%;
+  --muted-foreground: 212 14% 70%;
+  --subtle-foreground: 212 10% 58%;
+  --border: 212 12% 21%;
+  --input: 212 11% 29%;
+  --ring: 186 70% 52%;
+  --primary: 186 72% 45%;
+  --primary-foreground: 215 28% 7%;
+  --primary-soft: 188 45% 15%;
+  --primary-soft-foreground: 185 70% 70%;
+  --link: 185 72% 62%;
+  --brand: 186 72% 48%;
+  --ink: 210 33% 93%;
+  --ink-foreground: 215 28% 7%;
+  --ground-2: 215 18% 13%;
+  --success: 152 55% 40%;
+  --success-foreground: 215 28% 7%;
+  --success-soft: 152 35% 15%;
+  --success-soft-foreground: 150 55% 70%;
+  --warning: 36 85% 50%;
+  --warning-foreground: 215 28% 7%;
+  --warning-soft: 35 45% 15%;
+  --warning-soft-foreground: 40 90% 70%;
+  --danger: 350 70% 58%;
+  --danger-foreground: 215 28% 7%;
+  --danger-soft: 350 40% 16%;
+  --danger-soft-foreground: 350 85% 78%;
+  --star: 40 92% 56%;
+  --overlay: 215 40% 3%;
+  --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.35), 0 0 0 1px hsl(210 33% 93% / 0.05);
+  --shadow-card-hover: 0 2px 4px hsl(0 0% 0% / 0.4), 0 22px 44px -18px hsl(0 0% 0% / 0.6), 0 0 0 1px hsl(186 72% 48% / 0.35);
+  --shadow-popover: 0 14px 36px -10px hsl(0 0% 0% / 0.65), 0 2px 6px hsl(0 0% 0% / 0.35);
+  color-scheme: dark;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

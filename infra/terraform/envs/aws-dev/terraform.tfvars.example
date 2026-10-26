@@ -1,0 +1,44 @@
+# Copy to terraform.tfvars (git-ignored) and replace every placeholder.
+region      = "us-east-1"
+name_prefix = "my-lms-dev" # the media bucket name derives from this: make it globally unique
+
+domain          = "app.dev.example.com" # one host: the web app and /api/* (webhooks too)
+route53_zone_id = "<ROUTE53_HOSTED_ZONE_ID>" # automatic certificates + DNS; or set certificate_arn instead
+# mail_domain   = "example.com"              # defaults to domain
+
+# image_tag is passed by `make aws-deploy` (the git commit); set it here to pin a release.
+# image_tag = "0.1.0"
+
+# alarm_email = "oncall@example.com"
+
+# Graviton tasks (cheaper). Build the images to match: PLATFORM=linux/arm64 make aws-deploy
+# cpu_architecture = "ARM64"
+
+# AI: quiz drafting, grading suggestions and polish (optional; without a key the AI
+# buttons are hidden). Either pass the key (it lands in Terraform state) ...
+# openai_api_key = "<OPENAI_API_KEY>"
+# ... or create the secret empty and put the key in by hand:
+# create_openai_secret = true
+#   aws secretsmanager put-secret-value --secret-id <name_prefix>/openai \
+#     --secret-string '{"OPENAI_API_KEY":"<key>"}'
+
+# Payments. Enable one gateway or both; the secret halves go into <name_prefix>/payments,
+# created with "set-me" placeholders (the API will not sell until they are replaced).
+# After the first apply, register the URLs from `terraform output webhook_urls`.
+# enable_stripe          = true
+# stripe_publishable_key = "<STRIPE_PUBLISHABLE_KEY>"
+# enable_razorpay        = true
+# razorpay_key_id        = "<RAZORPAY_KEY_ID>"
+#   aws secretsmanager put-secret-value --secret-id <name_prefix>/payments --secret-string \
+#     '{"STRIPE_SECRET_KEY":"<key>","STRIPE_WEBHOOK_SECRET":"<whsec>","RAZORPAY_KEY_SECRET":"<secret>","RAZORPAY_WEBHOOK_SECRET":"<secret>"}'
+#   (keep all four keys; a gateway that is off may stay "set-me")
+
+# Lecture video from euron-video-system (EVS). The keys go into <name_prefix>/evs, the
+# same way; video_origins defaults to the origin of evs_base_url.
+# evs_base_url  = "https://video.example.com"
+# video_origins = ["https://video.example.com", "https://media.video.example.com"]
+#   aws secretsmanager put-secret-value --secret-id <name_prefix>/evs --secret-string \
+#     '{"EVS_PLAYBACK_KEY":"<key>","EVS_READ_KEY":"<key>","EVS_WEBHOOK_SECRET":"<secret>"}'
+
+# Browser uploads from a local web app running against this environment (make up-aws).
+# media_cors_extra_origins = ["http://localhost:3530"]

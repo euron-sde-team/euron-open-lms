@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Checkout and webhooks</title>
+  <desc id="desc">The browser asks the API for a quote, then starts a checkout with an idempotency key; the API inserts a pending order and creates a Stripe Checkout Session or a Razorpay order, and returns a redirect or modal handoff. The buyer pays at the gateway. The gateway's signed webhook is verified and stored once, then fulfilOrder locks the order, checks the amount, marks it paid, grants access and issues the invoice. The browser's return (Stripe sync or Razorpay confirm) calls fulfilOrder too and finds it already paid. After commit the worker renders the invoice and sends the receipt. A reconcile job covers lost webhooks.</desc>
+  <style>
+    .bg { fill: #f8fafc; }
+    .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+    .acc { fill: #ecfafc; stroke: #0E99AD; stroke-width: 1.6; }
+    .zone { fill: none; stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 6 5; }
+    .h { font: 600 20px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .t { font: 600 15px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .s { font: 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+    .m { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #0f172a; }
+    .k { font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0b7f90; }
+    .ln { stroke: #64748b; stroke-width: 1.5; fill: none; }
+    .ld { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+    .la { stroke: #0E99AD; stroke-width: 1.8; fill: none; }
+    .ah { fill: #64748b; }
+    .aa { fill: #0E99AD; }
+    .lbl { paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220; }
+      .box { fill: #111a2b; stroke: #2b3a55; }
+      .acc { fill: #0d2a33; stroke: #22b8cc; }
+      .zone { stroke: #475569; }
+      .h, .t, .m { fill: #e2e8f0; }
+      .s { fill: #94a3b8; }
+      .k { fill: #5fd3e3; }
+      .ln, .ld { stroke: #7c8aa5; }
+      .ah { fill: #7c8aa5; }
+      .la { stroke: #22b8cc; }
+      .aa { fill: #22b8cc; }
+      .lbl { stroke: #0b1220; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="aa" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+  <rect class="bg" width="1200" height="900" rx="14"/>
+  <text class="h" x="40" y="48">Checkout and webhooks</text>
+  <text class="s" x="40" y="72">The server prices the order; whichever path learns of the payment first fulfils it, under a row lock.</text>
+  <rect class="box" x="15" y="100" width="170" height="48" rx="10"/>
+  <text class="t" x="100" y="130" text-anchor="middle">Browser</text>
+  <path class="ld" d="M100 148 V815"/>
+  <rect class="acc" x="275" y="100" width="170" height="48" rx="10"/>
+  <text class="t" x="360" y="130" text-anchor="middle">API</text>
+  <path class="ld" d="M360 148 V815"/>
+  <rect class="box" x="595" y="100" width="170" height="48" rx="10"/>
+  <text class="t" x="680" y="130" text-anchor="middle">Postgres</text>
+  <path class="ld" d="M680 148 V815"/>
+  <rect class="box" x="815" y="100" width="170" height="48" rx="10"/>
+  <text class="t" x="900" y="130" text-anchor="middle">Stripe / Razorpay</text>
+  <path class="ld" d="M900 148 V815"/>
+  <rect class="box" x="1015" y="100" width="170" height="48" rx="10"/>
+  <text class="t" x="1100" y="130" text-anchor="middle">Worker</text>
+  <path class="ld" d="M1100 148 V815"/>
+  <path class="ln" d="M100 190 L356 190" marker-end="url(#a)"/>
+  <text class="s lbl" x="230" y="182" text-anchor="middle">POST /api/checkout/quote</text>
+  <path class="ln" d="M360 228 L676 228" marker-end="url(#a)"/>
+  <text class="s lbl" x="520" y="220" text-anchor="middle">price book, coupon, tax rule</text>
+  <path class="ln" d="M100 272 L356 272" marker-end="url(#a)"/>
+  <text class="s lbl" x="230" y="248" text-anchor="middle">POST /api/checkout/start</text>
+  <text class="s lbl" x="230" y="264" text-anchor="middle">with an idempotency key</text>
+  <path class="ln" d="M360 312 L676 312" marker-end="url(#a)"/>
+  <text class="s lbl" x="520" y="304" text-anchor="middle">INSERT order PENDING</text>
+  <path class="ln" d="M360 352 L896 352" marker-end="url(#a)"/>
+  <text class="s lbl" x="630" y="344" text-anchor="middle">create Checkout Session, or Razorpay order</text>
+  <path class="ld" d="M360 392 L104 392" marker-end="url(#a)"/>
+  <text class="s lbl" x="230" y="384" text-anchor="middle">REDIRECT or RAZORPAY_MODAL</text>
+  <path class="ln" d="M100 436 L896 436" marker-end="url(#a)"/>
+  <text class="s lbl" x="500" y="428" text-anchor="middle">pay on Stripe's hosted page, or in Razorpay's modal</text>
+  <rect class="zone" x="40" y="452" width="1120" height="30" rx="8"/>
+  <text class="k lbl" x="600" y="472" text-anchor="middle">Any order of arrival: the second caller finds the order PAID and changes nothing</text>
+  <path class="la" d="M900 520 L364 520" marker-end="url(#b)"/>
+  <text class="s lbl" x="630" y="512" text-anchor="middle">POST /api/webhooks/stripe or /razorpay (signed)</text>
+  <path class="ln" d="M360 560 L676 560" marker-end="url(#a)"/>
+  <text class="s lbl" x="520" y="552" text-anchor="middle">verify signature, store the event once</text>
+  <path class="la" d="M360 612 L676 612" marker-end="url(#b)"/>
+  <text class="s lbl" x="520" y="588" text-anchor="middle">fulfilOrder: lock, check the amount,</text>
+  <text class="s lbl" x="520" y="604" text-anchor="middle">PAID, grant, coupon, invoice number</text>
+  <path class="ln" d="M100 664 L356 664" marker-end="url(#a)"/>
+  <text class="s lbl" x="230" y="640" text-anchor="middle">GET orders/:id?sync=1, or</text>
+  <text class="s lbl" x="230" y="656" text-anchor="middle">POST razorpay/confirm</text>
+  <path class="ln" d="M360 704 L676 704" marker-end="url(#a)"/>
+  <text class="s lbl" x="520" y="696" text-anchor="middle">fulfilOrder: ALREADY_PAID</text>
+  <path class="ld" d="M360 748 L1096 748" marker-end="url(#a)"/>
+  <text class="s lbl" x="730" y="740" text-anchor="middle">after commit: invoices.render, notify.receipt</text>
+  <rect class="box" x="1000" y="764" width="180" height="46" rx="8"/>
+  <text class="s" x="1090" y="784" text-anchor="middle">invoice PDF to S3,</text>
+  <text class="s" x="1090" y="801" text-anchor="middle">receipt email</text>
+
+  <rect class="zone" x="40" y="830" width="1120" height="52" rx="10"/>
+  <text class="s" x="60" y="852">Lost webhook? billing.reconcile-pending runs every 10 minutes, asks the gateway about PENDING orders past their</text>
+  <text class="s" x="60" y="870">payment window, then fulfils them (amount checked) or expires them.</text>
+</svg>

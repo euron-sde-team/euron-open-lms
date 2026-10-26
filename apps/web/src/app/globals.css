@@ -1,0 +1,159 @@
+@import "@open-lms/ui/styles.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+  ::selection {
+    @apply bg-primary/20;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/*
+ * Authored HTML (course descriptions, articles, quiz prompts, feedback), sanitized on the
+ * server. Token colours only, so both themes work; headings in the display face.
+ */
+@layer components {
+  .lms-prose {
+    @apply text-[15.5px] leading-[1.7] text-foreground;
+    overflow-wrap: anywhere;
+  }
+  .lms-prose > :first-child {
+    margin-top: 0;
+  }
+  .lms-prose > :last-child {
+    margin-bottom: 0;
+  }
+  .lms-prose p,
+  .lms-prose ul,
+  .lms-prose ol,
+  .lms-prose blockquote,
+  .lms-prose pre,
+  .lms-prose table,
+  .lms-prose figure {
+    margin: 0 0 1em;
+  }
+  .lms-prose h1,
+  .lms-prose h2,
+  .lms-prose h3,
+  .lms-prose h4 {
+    @apply font-display font-semibold text-foreground;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    margin: 1.6em 0 0.55em;
+  }
+  .lms-prose h1 {
+    font-size: 1.75em;
+  }
+  .lms-prose h2 {
+    font-size: 1.45em;
+  }
+  .lms-prose h3 {
+    font-size: 1.2em;
+  }
+  .lms-prose h4 {
+    font-size: 1.05em;
+  }
+  .lms-prose a {
+    @apply font-medium text-link underline underline-offset-2;
+  }
+  .lms-prose a:hover {
+    text-decoration-thickness: 2px;
+  }
+  .lms-prose strong {
+    @apply font-semibold text-foreground;
+  }
+  .lms-prose ul {
+    list-style: disc;
+    padding-left: 1.4em;
+  }
+  .lms-prose ol {
+    list-style: decimal;
+    padding-left: 1.5em;
+  }
+  .lms-prose li {
+    margin: 0.3em 0;
+    padding-left: 0.2em;
+  }
+  .lms-prose li::marker {
+    @apply text-subtle-foreground;
+  }
+  .lms-prose li > ul,
+  .lms-prose li > ol {
+    margin: 0.3em 0 0;
+  }
+  .lms-prose blockquote {
+    @apply border-l-2 border-brand text-muted-foreground;
+    padding-left: 1em;
+  }
+  .lms-prose hr {
+    @apply border-border;
+    margin: 2em 0;
+  }
+  .lms-prose code {
+    @apply rounded bg-muted font-mono text-foreground;
+    font-size: 0.88em;
+    padding: 0.12em 0.35em;
+  }
+  .lms-prose pre {
+    @apply overflow-x-auto rounded-lg border border-border bg-ground-2 font-mono text-foreground;
+    font-size: 0.86em;
+    line-height: 1.6;
+    padding: 0.9em 1.1em;
+  }
+  .lms-prose pre code {
+    background: transparent;
+    padding: 0;
+    font-size: inherit;
+  }
+  .lms-prose img,
+  .lms-prose video {
+    @apply rounded-lg;
+    max-width: 100%;
+    height: auto;
+  }
+  .lms-prose table {
+    @apply w-full border-collapse text-[0.94em];
+    display: block;
+    overflow-x: auto;
+  }
+  .lms-prose th,
+  .lms-prose td {
+    @apply border-b border-border text-left;
+    padding: 0.5em 0.75em;
+  }
+  .lms-prose th {
+    @apply font-semibold text-foreground;
+  }
+}

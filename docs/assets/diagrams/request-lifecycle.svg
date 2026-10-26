@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-labelledby="title desc">
+  <title id="title">Request lifecycle in the API</title>
+  <desc id="desc">A request gets a request id, an access log line, Helmet headers and the CORS and Origin checks. Webhook routes branch off with a raw body and verify their signature first. Other requests get cookies and the JSON parser, then authentication, a rate limit, the controller's strict zod parse, the service in a transaction, presenters and the JSON response. After commit the effects enqueue jobs for the worker; errors become a status and a stable code.</desc>
+  <style>
+    .bg { fill: #f8fafc; }
+    .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+    .acc { fill: #ecfafc; stroke: #0E99AD; stroke-width: 1.6; }
+    .zone { fill: none; stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 6 5; }
+    .h { font: 600 20px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .t { font: 600 15px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .s { font: 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+    .m { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #0f172a; }
+    .k { font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0b7f90; }
+    .ln { stroke: #64748b; stroke-width: 1.5; fill: none; }
+    .ld { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+    .la { stroke: #0E99AD; stroke-width: 1.8; fill: none; }
+    .ah { fill: #64748b; }
+    .aa { fill: #0E99AD; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220; }
+      .box { fill: #111a2b; stroke: #2b3a55; }
+      .acc { fill: #0d2a33; stroke: #22b8cc; }
+      .zone { stroke: #475569; }
+      .h, .t, .m { fill: #e2e8f0; }
+      .s { fill: #94a3b8; }
+      .k { fill: #5fd3e3; }
+      .ln, .ld { stroke: #7c8aa5; }
+      .ah { fill: #7c8aa5; }
+      .la { stroke: #22b8cc; }
+      .aa { fill: #22b8cc; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="aa" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+  <rect class="bg" width="1200" height="540" rx="14"/>
+  <text class="h" x="40" y="48">Request lifecycle</text>
+  <text class="s" x="40" y="72">apps/api/src/app.ts, then the route's guards, controller and service. Express 5 forwards async errors to the handler.</text>
+  <rect class="box" x="40" y="150" width="170" height="80" rx="10"/>
+  <text class="t" x="54" y="180">Request id</text>
+  <text class="s" x="54" y="204">X-Request-Id or ULID</text>
+  <rect class="box" x="230" y="150" width="170" height="80" rx="10"/>
+  <text class="t" x="244" y="180">Access log</text>
+  <text class="s" x="244" y="204">pino-http, redaction</text>
+  <rect class="box" x="420" y="150" width="170" height="80" rx="10"/>
+  <text class="t" x="434" y="180">Helmet</text>
+  <text class="s" x="434" y="204">default-src 'none'</text>
+  <rect class="box" x="610" y="150" width="170" height="80" rx="10"/>
+  <text class="t" x="624" y="180">CORS + Origin</text>
+  <text class="s" x="624" y="204">foreign Origin: 403</text>
+  <rect class="box" x="800" y="150" width="170" height="80" rx="10"/>
+  <text class="t" x="814" y="180">Cookies, JSON</text>
+  <text class="s" x="814" y="204">1 MB body limit</text>
+  <rect class="acc" x="990" y="150" width="170" height="80" rx="10"/>
+  <text class="t" x="1004" y="180">authenticate</text>
+  <text class="s" x="1004" y="204">JWT, reload the user</text>
+  <rect class="acc" x="990" y="290" width="170" height="80" rx="10"/>
+  <text class="t" x="1004" y="320">rateLimit</text>
+  <text class="s" x="1004" y="344">Redis, user or IP</text>
+  <rect class="box" x="800" y="290" width="170" height="80" rx="10"/>
+  <text class="t" x="814" y="320">Controller</text>
+  <text class="s" x="814" y="344">strict zod parse</text>
+  <rect class="acc" x="610" y="290" width="170" height="80" rx="10"/>
+  <text class="t" x="624" y="320">Service</text>
+  <text class="s" x="624" y="344">rules, transaction</text>
+  <rect class="box" x="420" y="290" width="170" height="80" rx="10"/>
+  <text class="t" x="434" y="320">Presenter</text>
+  <text class="s" x="434" y="344">DTO field by field</text>
+  <rect class="box" x="230" y="290" width="170" height="80" rx="10"/>
+  <text class="t" x="244" y="320">Response</text>
+  <text class="s" x="244" y="344">JSON, X-Request-Id</text>
+  <rect class="acc" x="40" y="290" width="170" height="80" rx="10"/>
+  <text class="t" x="54" y="320">Webhooks</text>
+  <text class="s" x="54" y="344">raw body, signature</text>
+  <path class="ln" d="M210 190 L228 190" marker-end="url(#a)"/>
+  <path class="ln" d="M400 190 L418 190" marker-end="url(#a)"/>
+  <path class="ln" d="M590 190 L608 190" marker-end="url(#a)"/>
+  <path class="ln" d="M780 190 L798 190" marker-end="url(#a)"/>
+  <path class="ln" d="M970 190 L988 190" marker-end="url(#a)"/>
+  <path class="ln" d="M1075 230 L1075 288" marker-end="url(#a)"/>
+  <path class="ln" d="M990 330 L972 330" marker-end="url(#a)"/>
+  <path class="ln" d="M800 330 L782 330" marker-end="url(#a)"/>
+  <path class="ln" d="M610 330 L592 330" marker-end="url(#a)"/>
+  <path class="ln" d="M420 330 L402 330" marker-end="url(#a)"/>
+  <path class="la" d="M650 230 V258 H125 V288" marker-end="url(#b)"/>
+  <text class="k" x="250" y="252">/api/webhooks/*: mounted before the JSON parser</text>
+
+  <path class="la" d="M695 370 L695 428" marker-end="url(#b)"/>
+  <rect class="acc" x="420" y="430" width="380" height="80" rx="10"/>
+  <text class="t" x="436" y="460">After commit: fx.flush()</text>
+  <text class="s" x="436" y="484">jobs to BullMQ; the worker renders and mails</text>
+
+  <rect class="box" x="820" y="430" width="340" height="80" rx="10"/>
+  <text class="t" x="836" y="460">Errors</text>
+  <text class="s" x="836" y="484">HttpError: status + code; else 500 INTERNAL</text>
+  <path class="ld" d="M885 370 L985 428" marker-end="url(#a)"/>
+
+  <rect class="zone" x="40" y="430" width="360" height="80" rx="10"/>
+  <text class="t" x="56" y="460">Rolled back?</text>
+  <text class="s" x="56" y="484">no jobs, no mail, no audit row</text>
+</svg>

@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Euron Open LMS on AWS</title>
+  <desc id="desc">The browser reaches one host through optional CloudFront with WAF and an application load balancer that sends /api/* and /up to the api service and everything else to the web service. The api, worker and web services and the one-off migrate and admin tasks run on ECS Fargate in private subnets. They use RDS PostgreSQL, ElastiCache Redis, a private S3 bucket, SES, Secrets Manager, KMS and CloudWatch. The API calls Stripe, Razorpay, euron-video-system and an optional AI provider; the first three send signed webhooks back through the load balancer.</desc>
+  <style>
+    .bg { fill: #f8fafc; }
+    .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+    .acc { fill: #ecfafc; stroke: #0E99AD; stroke-width: 1.6; }
+    .zone { fill: none; stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 6 5; }
+    .h { font: 600 20px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .t { font: 600 15px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .s { font: 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+    .m { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #0f172a; }
+    .k { font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0b7f90; }
+    .ln { stroke: #64748b; stroke-width: 1.5; fill: none; }
+    .ld { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+    .la { stroke: #0E99AD; stroke-width: 1.8; fill: none; }
+    .ah { fill: #64748b; }
+    .aa { fill: #0E99AD; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220; }
+      .box { fill: #111a2b; stroke: #2b3a55; }
+      .acc { fill: #0d2a33; stroke: #22b8cc; }
+      .zone { stroke: #475569; }
+      .h, .t, .m { fill: #e2e8f0; }
+      .s { fill: #94a3b8; }
+      .k { fill: #5fd3e3; }
+      .ln, .ld { stroke: #7c8aa5; }
+      .ah { fill: #7c8aa5; }
+      .la { stroke: #22b8cc; }
+      .aa { fill: #22b8cc; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="aa" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+  <rect class="bg" width="1200" height="760" rx="14"/>
+  <text class="h" x="40" y="48">Deployment on AWS</text>
+  <text class="s" x="40" y="72">infra/terraform/modules/deployment: aws-dev and aws-prod differ only in sizes and safety switches.</text>
+
+  <!-- Browser and edge -->
+  <rect class="box" x="40" y="110" width="180" height="70" rx="10"/>
+  <text class="t" x="56" y="138">Browser</text>
+  <text class="s" x="56" y="160">token in memory</text>
+
+  <rect class="box" x="260" y="110" width="200" height="70" rx="10"/>
+  <text class="t" x="276" y="138">CloudFront + WAF</text>
+  <text class="s" x="276" y="160">optional (enable_cdn)</text>
+
+  <rect class="acc" x="260" y="220" width="200" height="120" rx="10"/>
+  <text class="t" x="276" y="248">Load balancer</text>
+  <text class="s" x="276" y="270">one host, HTTPS only</text>
+  <text class="m" x="276" y="296">/api/*, /up: api</text>
+  <text class="m" x="276" y="318">else: web</text>
+
+  <path class="la" d="M220 145 L258 145" marker-end="url(#b)"/>
+  <path class="la" d="M360 180 L360 218" marker-end="url(#b)"/>
+
+  <!-- Private subnets -->
+  <rect class="zone" x="500" y="100" width="360" height="480" rx="14"/>
+  <text class="t" x="520" y="126">Private subnets, ECS Fargate</text>
+
+  <rect class="box" x="530" y="140" width="300" height="70" rx="10"/>
+  <text class="t" x="546" y="168">web</text>
+  <text class="s" x="546" y="190">Next.js standalone, /env.js, CSP</text>
+
+  <rect class="acc" x="530" y="230" width="300" height="70" rx="10"/>
+  <text class="t" x="546" y="258">api</text>
+  <text class="s" x="546" y="280">REST, webhooks, /api/ready</text>
+
+  <rect class="box" x="530" y="320" width="300" height="70" rx="10"/>
+  <text class="t" x="546" y="348">worker</text>
+  <text class="s" x="546" y="370">BullMQ: PDFs, mail, reconcile</text>
+
+  <rect class="box" x="530" y="410" width="300" height="70" rx="10"/>
+  <text class="t" x="546" y="438">migrate, admin</text>
+  <text class="s" x="546" y="460">one-off tasks on the api image</text>
+
+  <text class="s" x="530" y="512">CPU target tracking at 60%,</text>
+  <text class="s" x="530" y="532">circuit breaker with rollback,</text>
+  <text class="s" x="530" y="552">read-only root, no public IPs</text>
+
+  <path class="ln" d="M460 250 L528 178" marker-end="url(#a)"/>
+  <path class="la" d="M460 290 L528 266" marker-end="url(#b)"/>
+
+  <!-- Data plane -->
+  <rect class="box" x="900" y="110" width="260" height="62" rx="10"/>
+  <text class="t" x="916" y="136">RDS PostgreSQL 16</text>
+  <text class="s" x="916" y="157">Multi-AZ in prod, TLS, KMS</text>
+  <rect class="box" x="900" y="182" width="260" height="62" rx="10"/>
+  <text class="t" x="916" y="208">ElastiCache Redis</text>
+  <text class="s" x="916" y="229">TLS + AUTH, noeviction</text>
+  <rect class="box" x="900" y="254" width="260" height="62" rx="10"/>
+  <text class="t" x="916" y="280">S3 media bucket</text>
+  <text class="s" x="916" y="301">private, SSE-KMS, versioned</text>
+  <rect class="box" x="900" y="326" width="260" height="62" rx="10"/>
+  <text class="t" x="916" y="352">SES v2</text>
+  <text class="s" x="916" y="373">DKIM, configuration set</text>
+  <rect class="box" x="900" y="398" width="260" height="62" rx="10"/>
+  <text class="t" x="916" y="424">Secrets Manager</text>
+  <text class="s" x="916" y="445">app, totp, redis, payments, evs</text>
+  <rect class="box" x="900" y="470" width="260" height="62" rx="10"/>
+  <text class="t" x="916" y="496">KMS, CloudWatch</text>
+  <text class="s" x="916" y="517">one key; logs, alarms</text>
+
+  <path class="ln" d="M830 255 L898 141" marker-end="url(#a)"/>
+  <path class="ln" d="M830 262 L898 213" marker-end="url(#a)"/>
+  <path class="ln" d="M830 270 L898 278" marker-end="url(#a)"/>
+  <path class="ln" d="M830 285 L898 422" marker-end="url(#a)"/>
+  <path class="ln" d="M830 360 L898 357" marker-end="url(#a)"/>
+
+  <!-- Browser straight to S3 -->
+  <path class="ld" d="M130 110 V92 H880 V296 H898" marker-end="url(#a)"/>
+  <text class="s" x="560" y="86">presigned PUT and GET, straight to the bucket</text>
+
+  <!-- Third parties -->
+  <rect class="box" x="40" y="620" width="250" height="64" rx="10"/>
+  <text class="t" x="56" y="646">Stripe</text>
+  <text class="s" x="56" y="667">Checkout, refunds, subscriptions</text>
+  <rect class="box" x="310" y="620" width="250" height="64" rx="10"/>
+  <text class="t" x="326" y="646">Razorpay</text>
+  <text class="s" x="326" y="667">orders, refunds, subscriptions</text>
+  <rect class="box" x="580" y="620" width="250" height="64" rx="10"/>
+  <text class="t" x="596" y="646">euron-video-system</text>
+  <text class="s" x="596" y="667">playback sessions, manifests</text>
+  <rect class="box" x="850" y="620" width="310" height="64" rx="10"/>
+  <text class="t" x="866" y="646">AI provider (optional)</text>
+  <text class="s" x="866" y="667">OpenAI, Gemini, or none</text>
+
+  <path class="la" d="M600 580 L170 618" marker-start="url(#b)" marker-end="url(#b)"/>
+  <path class="la" d="M640 580 L440 618" marker-start="url(#b)" marker-end="url(#b)"/>
+  <path class="la" d="M690 580 L705 618" marker-start="url(#b)" marker-end="url(#b)"/>
+  <path class="ld" d="M760 580 L1000 618" marker-end="url(#a)"/>
+
+  <text class="s" x="40" y="718">Webhooks from Stripe, Razorpay and euron-video-system arrive at /api/webhooks/* through the load balancer (and CloudFront).</text>
+  <text class="s" x="40" y="740">The browser also fetches lecture manifests and segments straight from euron-video-system with a short-lived token.</text>
+</svg>

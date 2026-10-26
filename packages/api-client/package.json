@@ -1,0 +1,24 @@
+{
+  "name": "@open-lms/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed REST client for the Open LMS API: single-flight token refresh, ApiError, upload helper.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src test",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@open-lms/types": "workspace:^"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
+  }
+}

@@ -1,0 +1,49 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Security issues: do not file here**, follow SECURITY.md instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. Say which role you were (learner, instructor, admin) and, for checkout problems, which gateway (Stripe or Razorpay, real or the local stub).
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. make up && make demo
+        2. Sign in as the demo learner, open a course ...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: env
+    attributes:
+      label: Environment
+      options: ["Local (make up on Floci)", "Local against AWS (make up-aws)", "AWS (Terraform)", "Self-hosted (other)", "Other"]
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: ["Catalog and course pages", "Classroom (lessons, video)", "Quizzes", "Assignments and grading", "Certificates", "Checkout and payments", "Admin console (/admin)", "AI drafting", "Email", "Deployment and infrastructure", "Other"]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Redact keys, tokens and hostnames before pasting.
+      render: text

@@ -1,0 +1,17 @@
+{
+  "name": "@open-lms/stubs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dependency-free local stand-ins for Stripe, Razorpay, an OpenAI-compatible model and the video service, for development, CI and the integration tests.",
+  "type": "module",
+  "main": "server.mjs",
+  "types": "server.d.mts",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "vitest": "^4.1.12"
+  }
+}

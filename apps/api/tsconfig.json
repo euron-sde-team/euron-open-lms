@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "rootDir": "../..",
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["src", "test", "../../db"]
+}

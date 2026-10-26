@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Overlay: the local containers against REAL AWS resources (from envs/aws-dev, or your
+# own). Postgres, Redis, Mailpit and the stubs stay local; media goes to the
+# real S3 bucket and mail through real SES. Credentials come from your AWS profile,
+# resource names from .env.aws.
+#
+#   cp deploy/compose/.env.aws.example deploy/compose/.env.aws   # then edit
+#   make up-aws
+#
+# The bucket's CORS rule must allow http://localhost:3530 for browser uploads: set
+# media_cors_extra_origins in the aws-dev terraform.tfvars.
+#
+# make up-aws passes .env.aws as a second --env-file, so its values both interpolate
+# the base's ${NAME:-default} entries (MAIL_FROM, STRIPE_API_BASE, PRODUCT_NAME,
+# ...) and, through env_file below, add the keys the base does not set (S3_BUCKET,
+# SES_CONFIGURATION_SET, MEDIA_ORIGINS, ...). Check what a service will get with:
+#   docker compose --env-file deploy/compose/.env --env-file deploy/compose/.env.aws \
+#     -f deploy/compose/compose.yaml -f deploy/compose/compose.aws.yaml config api
+# ─────────────────────────────────────────────────────────────────────────────
+x-aws-env: &aws-env
+  AWS_PROFILE: ${AWS_PROFILE:-default}
+  STORAGE: s3
+  MAIL_MODE: ses
+  # SES refuses an unverified sender, so there is no usable default.
+  MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in deploy/compose/.env.aws}
+
+x-aws-files: &aws-files
+  - ${HOME}/.aws:/home/node/.aws:ro
+  - mediadata:/app/data
+
+services:
+  migrate:
+    env_file: [.env.aws]
+    environment:
+      <<: *aws-env
+    volumes: *aws-files
+
+  api:
+    env_file: [.env.aws]
+    environment:
+      <<: *aws-env
+    volumes: *aws-files
+
+  worker:
+    env_file: [.env.aws]
+    environment:
+      <<: *aws-env
+    volumes: *aws-files
+
+  # MEDIA_ORIGINS (the bucket's S3 origin, for the CSP) comes from .env.aws.
+  web:
+    env_file: [.env.aws]

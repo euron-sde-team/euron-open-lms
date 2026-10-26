@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">Assessments: quizzes and assignments</title>
+  <desc id="desc">A quiz attempt is started or resumed, freezes a snapshot of questions, option order, points and the answer key, autosaves answers with the deadline enforced on the server, is submitted with a five second grace, is graded from the snapshot, reveals the key per policy, and the first pass completes the item. An assignment submission is a new version with accepted kinds and files by upload id; it waits in the grading queue, may get an AI draft that is never applied, is reviewed against the rubric and either approved, which completes the item, or sent back with changes requested or rejected, after which the learner submits the next version. Completion rolls up to the course and may issue the certificate.</desc>
+  <style>
+    .bg { fill: #f8fafc; }
+    .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+    .acc { fill: #ecfafc; stroke: #0E99AD; stroke-width: 1.6; }
+    .zone { fill: none; stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 6 5; }
+    .h { font: 600 20px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .t { font: 600 15px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .s { font: 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+    .m { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #0f172a; }
+    .k { font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0b7f90; }
+    .ln { stroke: #64748b; stroke-width: 1.5; fill: none; }
+    .ld { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+    .la { stroke: #0E99AD; stroke-width: 1.8; fill: none; }
+    .ah { fill: #64748b; }
+    .aa { fill: #0E99AD; }
+    .lbl { paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220; }
+      .box { fill: #111a2b; stroke: #2b3a55; }
+      .acc { fill: #0d2a33; stroke: #22b8cc; }
+      .zone { stroke: #475569; }
+      .h, .t, .m { fill: #e2e8f0; }
+      .s { fill: #94a3b8; }
+      .k { fill: #5fd3e3; }
+      .ln, .ld { stroke: #7c8aa5; }
+      .ah { fill: #7c8aa5; }
+      .la { stroke: #22b8cc; }
+      .aa { fill: #22b8cc; }
+      .lbl { stroke: #0b1220; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="aa" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+  <rect class="bg" width="1200" height="680" rx="14"/>
+  <text class="h" x="40" y="48">Assessments</text>
+  <text class="s" x="40" y="72">Quizzes are graded by the server from a frozen snapshot; assignments are decided by a person against a rubric.</text>
+  <text class="k" x="40" y="118">QUIZ</text>
+  <rect class="box" x="40" y="130" width="175" height="96" rx="10"/>
+  <text class="t" x="54" y="158">Start or resume</text>
+  <text class="s" x="54" y="184">one open attempt;</text>
+  <text class="s" x="54" y="204">max_attempts</text>
+  <rect class="acc" x="235" y="130" width="175" height="96" rx="10"/>
+  <text class="t" x="249" y="158">Snapshot</text>
+  <text class="s" x="249" y="184">questions, order, points,</text>
+  <text class="s" x="249" y="204">the key (CSPRNG shuffle)</text>
+  <rect class="box" x="430" y="130" width="175" height="96" rx="10"/>
+  <text class="t" x="444" y="158">Autosave</text>
+  <text class="s" x="444" y="184">snapshot ids only;</text>
+  <text class="s" x="444" y="204">deadline on the server</text>
+  <rect class="box" x="625" y="130" width="175" height="96" rx="10"/>
+  <text class="t" x="639" y="158">Submit</text>
+  <text class="s" x="639" y="184">5 s grace; after it:</text>
+  <text class="s" x="639" y="204">EXPIRED on autosave</text>
+  <rect class="box" x="820" y="130" width="175" height="96" rx="10"/>
+  <text class="t" x="834" y="158">Grade</text>
+  <text class="s" x="834" y="184">from the snapshot;</text>
+  <text class="s" x="834" y="204">all or nothing</text>
+  <rect class="acc" x="1015" y="130" width="175" height="96" rx="10"/>
+  <text class="t" x="1029" y="158">Reveal, complete</text>
+  <text class="s" x="1029" y="184">per reveal policy;</text>
+  <text class="s" x="1029" y="204">first pass completes</text>
+  <path class="ln" d="M215 178 L233 178" marker-end="url(#a)"/>
+  <path class="ln" d="M410 178 L428 178" marker-end="url(#a)"/>
+  <path class="ln" d="M605 178 L623 178" marker-end="url(#a)"/>
+  <path class="ln" d="M800 178 L818 178" marker-end="url(#a)"/>
+  <path class="ln" d="M995 178 L1013 178" marker-end="url(#a)"/>
+  <text class="k" x="40" y="290">ASSIGNMENT</text>
+  <rect class="box" x="40" y="302" width="175" height="96" rx="10"/>
+  <text class="t" x="54" y="330">Submit version n</text>
+  <text class="s" x="54" y="356">accepted kinds; files</text>
+  <text class="s" x="54" y="376">by upload id; due date</text>
+  <rect class="box" x="235" y="302" width="175" height="96" rx="10"/>
+  <text class="t" x="249" y="330">Queue</text>
+  <text class="s" x="249" y="356">SUBMITTED versions,</text>
+  <text class="s" x="249" y="376">oldest first</text>
+  <rect class="box" x="430" y="302" width="175" height="96" rx="10"/>
+  <text class="t" x="444" y="330">AI draft</text>
+  <text class="s" x="444" y="356">optional; stored next</text>
+  <text class="s" x="444" y="376">to it, never applied</text>
+  <rect class="box" x="625" y="302" width="175" height="96" rx="10"/>
+  <text class="t" x="639" y="330">Review</text>
+  <text class="s" x="639" y="356">rubric scores clamped</text>
+  <text class="s" x="639" y="376">per criterion</text>
+  <rect class="acc" x="820" y="302" width="175" height="96" rx="10"/>
+  <text class="t" x="834" y="330">Approve</text>
+  <text class="s" x="834" y="356">total meets the pass</text>
+  <text class="s" x="834" y="376">points: item completes</text>
+  <rect class="box" x="820" y="420" width="175" height="96" rx="10"/>
+  <text class="t" x="834" y="448">Changes or reject</text>
+  <text class="s" x="834" y="474">final for this version;</text>
+  <text class="s" x="834" y="494">the learner resubmits</text>
+  <path class="ln" d="M215 350 L233 350" marker-end="url(#a)"/>
+  <path class="ln" d="M410 350 L428 350" marker-end="url(#a)"/>
+  <path class="ln" d="M605 350 L623 350" marker-end="url(#a)"/>
+  <path class="la" d="M800 350 L818 350" marker-end="url(#b)"/>
+  <path class="ln" d="M800 370 L818 455" marker-end="url(#a)"/>
+  <path class="ld" d="M907 516 V540 H127 V400" marker-end="url(#a)"/>
+  <text class="s lbl" x="480" y="531" text-anchor="middle">version n + 1 (UNIQUE item, learner, version)</text>
+
+  <path class="la" d="M1102 226 V586" marker-end="url(#b)"/>
+  <path class="la" d="M995 350 H1060 V586" marker-end="url(#b)"/>
+  <rect class="acc" x="600" y="590" width="560" height="64" rx="10"/>
+  <text class="t" x="616" y="616">markItemComplete, then the course rollup</text>
+  <text class="s" x="616" y="638">in the same transaction; may issue the certificate</text>
+
+  <rect class="zone" x="40" y="590" width="540" height="64" rx="10"/>
+  <text class="s" x="56" y="616">Staff never take attempts or submit (409 STAFF_PREVIEW).</text>
+  <text class="s" x="56" y="638">Quizzes and assignments are never free previews.</text>
+</svg>

@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="t d">
+  <title id="t">Euron Open LMS</title>
+  <desc id="d">Euron Open LMS: courses, a classroom, quizzes, reviewed projects, certificates and billing, on infrastructure you own.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B1220"/>
+      <stop offset="1" stop-color="#0F1B2D"/>
+    </linearGradient>
+    <linearGradient id="c1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A6B78"/>
+      <stop offset="1" stop-color="#0E99AD"/>
+    </linearGradient>
+    <linearGradient id="c2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3B1C7A"/>
+      <stop offset="1" stop-color="#6D28D9"/>
+    </linearGradient>
+    <linearGradient id="c3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7C2D12"/>
+      <stop offset="1" stop-color="#C2410C"/>
+    </linearGradient>
+    <clipPath id="r"><rect width="1280" height="360" rx="24"/></clipPath>
+  </defs>
+  <g clip-path="url(#r)">
+    <rect width="1280" height="360" fill="url(#bg)"/>
+    <g fill="none" stroke="#0E99AD" stroke-opacity="0.16" stroke-width="1.2">
+      <circle cx="1180" cy="40" r="120"/>
+      <circle cx="1180" cy="40" r="180"/>
+      <circle cx="1180" cy="40" r="240"/>
+      <circle cx="1180" cy="40" r="300"/>
+    </g>
+
+    <!-- Mark -->
+    <g transform="translate(72 70)">
+      <rect width="56" height="56" rx="16" fill="#F4F7FB"/>
+      <path d="M12.3 19.6c5.6-1.6 10.9-.7 15.7 2.8v19.3c-4.9-3.5-10.1-4.4-15.7-2.8z" fill="#0E99AD"/>
+      <path d="M43.7 19.6c-5.6-1.6-10.9-.7-15.7 2.8v19.3c4.9-3.5 10.1-4.4 15.7-2.8z" fill="#0B1220" fill-opacity="0.85"/>
+      <path d="M28 9.1l1.9 4.2 4.2 1.9-4.2 1.9-1.9 4.2-1.9-4.2-4.2-1.9 4.2-1.9z" fill="#0B1220"/>
+    </g>
+
+    <text x="72" y="190" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="58" font-weight="700" letter-spacing="-1.4" fill="#F4F7FB">Euron Open LMS</text>
+    <text x="74" y="236" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#B7C3D3">Courses people finish: a classroom, quizzes, reviewed projects</text>
+    <text x="74" y="266" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" fill="#B7C3D3">and certificates, with Stripe and Razorpay billing built in.</text>
+    <text x="74" y="312" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" letter-spacing="1.6" fill="#11A3B8">OPEN SOURCE · SELF-HOSTED · TERRAFORM FOR AWS</text>
+
+    <!-- Three course cards -->
+    <g transform="translate(784 74) rotate(-4)">
+      <rect width="230" height="196" rx="18" fill="#141F31"/>
+      <rect width="230" height="118" rx="18" fill="url(#c2)"/>
+      <rect y="100" width="230" height="18" fill="url(#c2)"/>
+      <text x="16" y="74" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" letter-spacing="1.2" fill="#E9DEFF">SOFTWARE ENGINEERING</text>
+      <text x="16" y="98" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#FFFFFF">Reliable APIs</text>
+      <rect x="16" y="140" width="150" height="9" rx="4.5" fill="#2A3A52"/>
+      <rect x="16" y="162" width="96" height="8" rx="4" fill="#22324A"/>
+    </g>
+    <g transform="translate(958 104) rotate(3)">
+      <rect width="230" height="196" rx="18" fill="#141F31"/>
+      <rect width="230" height="118" rx="18" fill="url(#c1)"/>
+      <rect y="100" width="230" height="18" fill="url(#c1)"/>
+      <text x="16" y="74" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" letter-spacing="1.2" fill="#D6F7FB">DATA AND AI</text>
+      <text x="16" y="98" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#FFFFFF">Machine Learning</text>
+      <rect x="16" y="140" width="198" height="5" rx="2.5" fill="#2A3A52"/>
+      <rect x="16" y="140" width="128" height="5" rx="2.5" fill="#11A3B8"/>
+      <text x="16" y="172" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#B7C3D3">64% complete</text>
+    </g>
+    <g transform="translate(748 232) rotate(-2) scale(0.86)">
+      <rect width="200" height="132" rx="16" fill="#F4F7FB"/>
+      <text x="100" y="34" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6" fill="#0A6B78">CERTIFICATE OF COMPLETION</text>
+      <text x="100" y="66" text-anchor="middle" font-family="Georgia, serif" font-size="19" fill="#0B1220">Hugo Lambert</text>
+      <rect x="50" y="80" width="100" height="1" fill="#C9D3DF"/>
+      <text x="100" y="100" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#475569">Building Reliable APIs</text>
+      <circle cx="172" cy="112" r="10" fill="none" stroke="#0E99AD" stroke-width="2"/>
+      <path d="M167 112l3.5 3.5 6-7" fill="none" stroke="#0E99AD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>

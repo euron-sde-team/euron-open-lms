@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="830" viewBox="0 0 1200 830" role="img" aria-labelledby="title desc">
+  <title id="title">Classroom playback with euron-video-system</title>
+  <desc id="desc">The player asks the API for playback. The API loads the access facts, runs decideAccess, checks the lecture is a ready video, and only then mints an EVS playback session with the playback key, the learner's id and the app origin. The browser plays the tokenised manifest and segments straight from EVS and sends heartbeats every 15 seconds; the API caps the claimed time, and at 90 percent watched completes the item, updates the rollup and may issue the certificate. EVS sends a signed video.ready webhook that sets the lecture status and duration.</desc>
+  <style>
+    .bg { fill: #f8fafc; }
+    .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+    .acc { fill: #ecfafc; stroke: #0E99AD; stroke-width: 1.6; }
+    .zone { fill: none; stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 6 5; }
+    .h { font: 600 20px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .t { font: 600 15px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .s { font: 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+    .m { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #0f172a; }
+    .k { font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0b7f90; }
+    .ln { stroke: #64748b; stroke-width: 1.5; fill: none; }
+    .ld { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+    .la { stroke: #0E99AD; stroke-width: 1.8; fill: none; }
+    .ah { fill: #64748b; }
+    .aa { fill: #0E99AD; }
+    .lbl { paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220; }
+      .box { fill: #111a2b; stroke: #2b3a55; }
+      .acc { fill: #0d2a33; stroke: #22b8cc; }
+      .zone { stroke: #475569; }
+      .h, .t, .m { fill: #e2e8f0; }
+      .s { fill: #94a3b8; }
+      .k { fill: #5fd3e3; }
+      .ln, .ld { stroke: #7c8aa5; }
+      .ah { fill: #7c8aa5; }
+      .la { stroke: #22b8cc; }
+      .aa { fill: #22b8cc; }
+      .lbl { stroke: #0b1220; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="aa" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+  <rect class="bg" width="1200" height="830" rx="14"/>
+  <text class="h" x="40" y="48">Classroom playback</text>
+  <text class="s" x="40" y="72">The entitlement check comes first; the EVS key never leaves the API; the browser only gets a short-lived manifest URL.</text>
+  <rect class="box" x="35" y="100" width="170" height="48" rx="10"/>
+  <text class="t" x="120" y="130" text-anchor="middle">Browser (player)</text>
+  <path class="ld" d="M120 148 V790"/>
+  <rect class="acc" x="335" y="100" width="170" height="48" rx="10"/>
+  <text class="t" x="420" y="130" text-anchor="middle">API</text>
+  <path class="ld" d="M420 148 V790"/>
+  <rect class="box" x="635" y="100" width="170" height="48" rx="10"/>
+  <text class="t" x="720" y="130" text-anchor="middle">Postgres</text>
+  <path class="ld" d="M720 148 V790"/>
+  <rect class="box" x="935" y="100" width="170" height="48" rx="10"/>
+  <text class="t" x="1020" y="130" text-anchor="middle">euron-video-system</text>
+  <path class="ld" d="M1020 148 V790"/>
+  <path class="ln" d="M120 190 L416 190" marker-end="url(#a)"/>
+  <text class="s lbl" x="270" y="182" text-anchor="middle">POST /api/learn/items/:id/playback</text>
+  <path class="ln" d="M420 230 L716 230" marker-end="url(#a)"/>
+  <text class="s lbl" x="570" y="222" text-anchor="middle">staff role, enrollment and order, subscription</text>
+  <rect class="acc" x="290" y="246" width="260" height="44" rx="8"/>
+  <text class="s" x="420" y="266" text-anchor="middle">decideAccess (or a free preview),</text>
+  <text class="s" x="420" y="283" text-anchor="middle">then: a VIDEO lecture, READY?</text>
+  <path class="la" d="M420 340 L1016 340" marker-end="url(#b)"/>
+  <text class="s lbl" x="720" y="316" text-anchor="middle">POST /v1/videos/:id/playback-sessions</text>
+  <text class="s lbl" x="720" y="332" text-anchor="middle">Bearer playback:mint key, { viewerId, origin }</text>
+  <path class="ld" d="M1020 380 L424 380" marker-end="url(#a)"/>
+  <text class="s lbl" x="720" y="372" text-anchor="middle">manifestUrl with a token, expiresAt, watermark</text>
+  <path class="ld" d="M420 420 L124 420" marker-end="url(#a)"/>
+  <text class="s lbl" x="270" y="412" text-anchor="middle">Playback { manifestUrl, resumeAt, expiresAt }</text>
+  <path class="ln" d="M120 462 L1016 462" marker-end="url(#a)"/>
+  <text class="s lbl" x="570" y="454" text-anchor="middle">GET master.m3u8?token=..., then playlists and segments</text>
+  <rect class="zone" x="40" y="480" width="1120" height="30" rx="8"/>
+  <text class="k lbl" x="600" y="500" text-anchor="middle">Every 15 seconds while playing, and on pause, end, tab hide</text>
+  <path class="ln" d="M120 548 L416 548" marker-end="url(#a)"/>
+  <text class="s lbl" x="270" y="524" text-anchor="middle">POST /api/learn/items/:id/progress</text>
+  <text class="s lbl" x="270" y="540" text-anchor="middle">{ positionSeconds, playedSeconds }</text>
+  <path class="ln" d="M420 588 L716 588" marker-end="url(#a)"/>
+  <text class="s lbl" x="570" y="580" text-anchor="middle">lock the enrollment; applyBeat caps the time claimed</text>
+  <path class="la" d="M420 628 L716 628" marker-end="url(#b)"/>
+  <text class="s lbl" x="570" y="620" text-anchor="middle">90% really watched: complete, rollup, certificate</text>
+  <path class="ld" d="M420 668 L124 668" marker-end="url(#a)"/>
+  <text class="s lbl" x="270" y="660" text-anchor="middle">ProgressResult</text>
+  <rect class="zone" x="40" y="684" width="1120" height="30" rx="8"/>
+  <text class="k lbl" x="600" y="704" text-anchor="middle">Session about to expire, or a fatal HLS error: the player asks for playback again (up to 3 times)</text>
+  <path class="la" d="M1020 752 L424 752" marker-end="url(#b)"/>
+  <text class="s lbl" x="720" y="728" text-anchor="middle">POST /api/webhooks/evs: video.ready</text>
+  <text class="s lbl" x="720" y="744" text-anchor="middle">EVS-Signature verified</text>
+  <path class="ln" d="M420 782 L716 782" marker-end="url(#a)"/>
+  <text class="s lbl" x="570" y="774" text-anchor="middle">lectures READY, duration; recount the course</text>
+</svg>

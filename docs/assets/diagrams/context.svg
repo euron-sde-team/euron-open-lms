@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="title desc">
+  <title id="title">Euron Open LMS in context</title>
+  <desc id="desc">Visitors, learners, instructors, staff and the operator use one web app backed by the API, a worker, Postgres and Redis. The API calls Stripe, Razorpay, euron-video-system, S3, a mail transport and an optional AI provider; Stripe, Razorpay and euron-video-system send signed webhooks back. Media bytes, lecture video and card details bypass the API.</desc>
+  <style>
+    .bg { fill: #f8fafc; }
+    .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+    .acc { fill: #ecfafc; stroke: #0E99AD; stroke-width: 1.6; }
+    .zone { fill: none; stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 6 5; }
+    .h { font: 600 20px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .t { font: 600 15px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+    .s { font: 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+    .m { font: 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #0f172a; }
+    .k { font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0b7f90; }
+    .ln { stroke: #64748b; stroke-width: 1.5; fill: none; }
+    .ld { stroke: #64748b; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+    .la { stroke: #0E99AD; stroke-width: 1.8; fill: none; }
+    .ah { fill: #64748b; }
+    .aa { fill: #0E99AD; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220; }
+      .box { fill: #111a2b; stroke: #2b3a55; }
+      .acc { fill: #0d2a33; stroke: #22b8cc; }
+      .zone { stroke: #475569; }
+      .h, .t, .m { fill: #e2e8f0; }
+      .s { fill: #94a3b8; }
+      .k { fill: #5fd3e3; }
+      .ln, .ld { stroke: #7c8aa5; }
+      .ah { fill: #7c8aa5; }
+      .la { stroke: #22b8cc; }
+      .aa { fill: #22b8cc; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="aa" d="M0 0L10 5L0 10z"/></marker>
+  </defs>
+  <rect class="bg" width="1200" height="660" rx="14"/>
+  <text class="h" x="40" y="48">Euron Open LMS in context</text>
+  <text class="s" x="40" y="72">One academy per deployment. Everyone uses the same web app; what they can open depends on their role and their entitlements.</text>
+
+  <!-- People -->
+  <rect class="box" x="40" y="110" width="230" height="64" rx="10"/>
+  <text class="t" x="56" y="136">Visitors</text>
+  <text class="s" x="56" y="157">catalog, previews, verify</text>
+  <rect class="box" x="40" y="190" width="230" height="64" rx="10"/>
+  <text class="t" x="56" y="216">Learners</text>
+  <text class="s" x="56" y="237">classroom, quizzes, checkout</text>
+  <rect class="box" x="40" y="270" width="230" height="64" rx="10"/>
+  <text class="t" x="56" y="296">Instructors</text>
+  <text class="s" x="56" y="317">editor, grading (own courses)</text>
+  <rect class="box" x="40" y="350" width="230" height="64" rx="10"/>
+  <text class="t" x="56" y="376">Staff</text>
+  <text class="s" x="56" y="397">SUPPORT, FINANCE, ADMIN</text>
+  <rect class="box" x="40" y="430" width="230" height="64" rx="10"/>
+  <text class="t" x="56" y="456">Operator</text>
+  <text class="s" x="56" y="477">Terraform, make, CLI</text>
+
+  <path class="ln" d="M270 142 L468 220" marker-end="url(#a)"/>
+  <path class="ln" d="M270 222 L468 260" marker-end="url(#a)"/>
+  <path class="ln" d="M270 302 L468 300" marker-end="url(#a)"/>
+  <path class="ln" d="M270 382 L468 340" marker-end="url(#a)"/>
+  <path class="ld" d="M270 462 L468 380" marker-end="url(#a)"/>
+
+  <!-- The system -->
+  <rect class="acc" x="470" y="180" width="260" height="240" rx="14"/>
+  <text class="t" x="490" y="214">Euron Open LMS</text>
+  <text class="s" x="490" y="246">web app (Next.js)</text>
+  <text class="s" x="490" y="270">API (Express, Kysely)</text>
+  <text class="s" x="490" y="294">worker (BullMQ jobs)</text>
+  <text class="s" x="490" y="318">PostgreSQL 16, Redis</text>
+  <text class="k" x="490" y="356">entitlements decide</text>
+  <text class="k" x="490" y="378">who may open content</text>
+
+  <!-- Outside systems -->
+  <rect class="box" x="930" y="100" width="230" height="60" rx="10"/>
+  <text class="t" x="946" y="125">Stripe</text>
+  <text class="s" x="946" y="146">hosted Checkout, refunds</text>
+  <rect class="box" x="930" y="175" width="230" height="60" rx="10"/>
+  <text class="t" x="946" y="200">Razorpay</text>
+  <text class="s" x="946" y="221">Checkout.js modal, refunds</text>
+  <rect class="box" x="930" y="250" width="230" height="60" rx="10"/>
+  <text class="t" x="946" y="275">euron-video-system</text>
+  <text class="s" x="946" y="296">playback sessions, library</text>
+  <rect class="box" x="930" y="325" width="230" height="60" rx="10"/>
+  <text class="t" x="946" y="350">S3 (private bucket)</text>
+  <text class="s" x="946" y="371">files, invoice and cert PDFs</text>
+  <rect class="box" x="930" y="400" width="230" height="60" rx="10"/>
+  <text class="t" x="946" y="425">Mail (SES or SMTP)</text>
+  <text class="s" x="946" y="446">verification, receipts</text>
+  <rect class="box" x="930" y="475" width="230" height="60" rx="10"/>
+  <text class="t" x="946" y="500">AI provider (optional)</text>
+  <text class="s" x="946" y="521">drafts only, a person decides</text>
+
+  <path class="la" d="M732 205 L928 130" marker-start="url(#b)" marker-end="url(#b)"/>
+  <path class="la" d="M732 240 L928 205" marker-start="url(#b)" marker-end="url(#b)"/>
+  <path class="la" d="M732 275 L928 280" marker-start="url(#b)" marker-end="url(#b)"/>
+  <path class="ln" d="M732 310 L928 355" marker-end="url(#a)"/>
+  <path class="ln" d="M732 345 L928 430" marker-end="url(#a)"/>
+  <path class="ld" d="M732 380 L928 505" marker-end="url(#a)"/>
+  <text class="k" x="772" y="300">plus signed webhooks</text>
+
+  <!-- Bypass paths -->
+  <rect class="zone" x="40" y="556" width="1120" height="88" rx="12"/>
+  <text class="t" x="60" y="588">Paths that bypass the API</text>
+  <text class="s" x="60" y="612">Media bytes: browser to S3 with presigned URLs.  Lecture video: browser to euron-video-system with a short-lived token.</text>
+  <text class="s" x="60" y="630">Card and UPI details: only on Stripe's hosted page and in Razorpay's modal.</text>
+</svg>
